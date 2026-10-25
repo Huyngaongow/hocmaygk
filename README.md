@@ -1,9 +1,19 @@
 # Đề 5 — Ensemble Learning
 
+**Nhóm:** Nguyễn Nghĩa Hiếu — 52400013; Trần Quốc Bảo — 52400102.
+
+**Giảng viên:** TS. Trần Lương Quốc Đại.
+
+**Học phần:** Nhập môn Học máy. `(3 + 2) mod 8 = 5`.
+
 Mã minh họa tiểu luận **phần dư 5 (mod 8)**: tự triển khai bootstrap,
 hard voting và out-of-bag (OOB) cho Bagging cây quyết định. So sánh với
 cây đơn và Random Forest; đánh giá trên 10 lần chia dữ liệu có phân tầng.
 Cây cơ sở và Random Forest do scikit-learn cung cấp.
+
+Đọc báo cáo tại `report/Bao_cao_De_5_Ensemble_Learning.pdf` hoặc bản Word
+cùng tên. Hướng dẫn demo, phân chia phần nói và đóng gói:
+[`HUONG_DAN_NOP_BAI.md`](HUONG_DAN_NOP_BAI.md).
 
 ## Chạy trên Windows (PowerShell)
 
@@ -107,11 +117,27 @@ công thức lỗi phân lớp; ensemble không luôn tốt hơn cây đơn.
 
 ### Ví dụ tính tay
 
-Tập chỉ số `[0, 1, 2, 3, 4]` có thể tạo ba bootstrap:
-`[0, 0, 2, 4, 1]`, `[1, 3, 3, 2, 0]`, `[4, 2, 4, 1, 3]`.
-Chỉ số có thể lặp; một số mẫu không xuất hiện trong một cây.
-Nếu ba phiếu giả định là `[ác, lành, ác]`, tổ hợp chọn ác với 2/3 phiếu.
-Đây là ví dụ cơ chế, không khẳng định là đầu ra của các cây cụ thể.
+Ví dụ nhỏ xuyên suốt dùng `x = [1, 2, 3, 4, 5]` và nhãn
+`[lành, lành, ác, ác, ác]`. Ba cây độ sâu 1 học từ các bootstrap cố định:
+
+| Cây | Chỉ số bootstrap | Ngưỡng học được | Dự đoán tại x = 2,8 |
+|---|---|---:|---|
+| h₁ | `[0, 0, 2, 4, 1]` | 2,5 | Ác |
+| h₂ | `[0, 0, 1, 3, 4]` | 3,0 | Lành |
+| h₃ | `[4, 2, 4, 1, 3]` | 2,5 | Ác |
+
+Mỗi cây dự đoán lành nếu `x ≤ ngưỡng`, ác nếu lớn hơn. Kết quả **2:1 → ác**
+được tính từ chính ba cây đã học, không ghép các phiếu giả định rời nhau.
+Đây là dữ liệu tổng hợp để giải thích cơ chế; x = 2,8 không có nhãn thật,
+không phải mẫu bệnh nhân và không dùng để tính accuracy thí nghiệm thực.
+
+```bash
+.venv/bin/python examples/toy_bagging.py --output-dir outputs/toy
+```
+
+Mở `outputs/toy/toy_example.md` để xem toàn bộ phép tính Gini, ngưỡng,
+phiếu và OOB. Ba bootstrap được chọn trước cho dễ tính tay; chương trình
+thí nghiệm chính vẫn lấy mẫu ngẫu nhiên có hoàn lại bằng seed.
 
 ### Out-of-bag
 
@@ -198,6 +224,8 @@ lành, nên dự đoán **sai**. Mẫu này được chọn theo thứ tự, kh�
   lặp seed, biểu đồ và xuất báo cáo cho bài toán nhị phân cụ thể.
 - `tests/`: kiểm tra phiếu/OOB, nhãn, tái lập, tránh dùng test để chọn depth,
   hồi quy seed 42 và chạy CLI với số cây khác mặc định.
+- `examples/toy_bagging.py`: ví dụ nhỏ cùng một luồng từ bootstrap đến voting;
+  có kiểm thử riêng cho ngưỡng, phiếu và các mẫu OOB.
 
 `ManualBagging` hỗ trợ `get_params`, `set_params`, `clone` và cross-validation
 của sklearn. `votes(X)` trả số phiếu; `predict_vote_fraction(X)` trả tỷ lệ
@@ -210,17 +238,37 @@ Chạy kiểm thử bằng cùng Python đã cài dependencies:
 py -m unittest discover -s tests -v
 ```
 
-Không cần cài thêm pytest. Bộ kiểm thử gồm cả workflow thực, không chỉ cú pháp.
+Không cần cài thêm pytest. Bộ kiểm thử gồm cả workflow thực và ví dụ tính tay,
+không chỉ cú pháp.
 
 ## Slide và tài liệu nộp
 
-Bộ **26 slide** trong `De_5_Ensemble_Learning.pptx` và PDF cùng tên được
-cập nhật theo phiên bản mã này. Đồ họa/chữ chỉnh sửa được; phần Notes chứa
-lời thuyết trình. Bản văn bản: `presentation/loi_thuyet_trinh.md`.
-Xem `presentation/README.md` để tạo lại slide. Điền tên thành viên và lớp.
+| Tài liệu | Vị trí |
+|---|---|
+| Báo cáo Word và PDF | `report/Bao_cao_De_5_Ensemble_Learning.docx` / `.pdf` |
+| Nguồn nội dung báo cáo | `report/Bao_cao_De_5_Ensemble_Learning.md` |
+| Slide PowerPoint và PDF | `De_5_Ensemble_Learning.pptx` / `.pdf` |
+| Lời thuyết trình | `presentation/loi_thuyet_trinh.md` |
+| Demo, hỏi đáp và quy trình nộp | `HUONG_DAN_NOP_BAI.md` |
+| Thông tin nhóm dùng chung | `report/group_info.json` |
 
-`outputs/report.md` là báo cáo thực nghiệm tự sinh, **chưa phải báo cáo
-Word/PDF hoàn chỉnh theo đề**. PDF ở thư mục gốc là bản xuất slide.
+Bộ **26 slide** có đồ họa/chữ chỉnh sửa được và lời thuyết trình trong Notes.
+`outputs/report.md` chỉ là phần thực nghiệm tự sinh; báo cáo hoàn chỉnh ở
+`report/`. PDF gốc của repo là bản slide, khác với PDF báo cáo.
+
+Để tạo lại toàn bộ tài liệu và gói nộp (cần LibreOffice để xuất PDF,
+Poppler/`pdftotext` để cập nhật mục lục):
+
+```bash
+.venv/bin/python -m pip install -r requirements.txt -r presentation/requirements.txt -r report/requirements.txt
+.venv/bin/python tools/prepare_submission.py
+```
+
+Lệnh kiểm thử và chạy lại thí nghiệm trước khi tạo tài liệu; file nén cuối tại
+`submission/52400013_52400102.zip` có cả kết quả trong `outputs/` dù thư mục
+này bị Git bỏ qua. `.venv/`, `.git/` và cache không được đóng gói.
+Các tệp Word/slide sinh tự động sẽ được tạo lại; lưu riêng nếu đã sửa thủ công.
+Xem `presentation/README.md` và `report/README.md` để tạo riêng từng tài liệu.
 
 ## Tài liệu tham khảo
 

@@ -1,12 +1,12 @@
 # Lời thuyết trình — Đề 5: Ensemble Learning
 
-26 slide: 24 trang chính và 2 trang phụ lục. Gợi ý khoảng 15–20 phút cho phần chính, rút gọn phần mở rộng khi cần.
+26 slide: 24 trang chính và 2 trang phụ lục. Gợi ý khoảng 15–20 phút cho phần chính; thời lượng thực tế theo giảng viên. Nói ngắn phần mở rộng ở slide 10–11 khi cần.
 
-Trước khi trình bày: bổ sung tên thành viên và lớp tại slide 1.
+Thông tin bìa lấy từ report/group_info.json. Ví dụ slide 7–9 cùng một bộ dữ liệu giả lập và có mã tái lập. Các bảng thực nghiệm thuộc chạy đủ 10 seed.
 
 ## Slide 01 — 
 
-Mở đầu: Một cây quyết định có thể thay đổi đáng kể khi dữ liệu huấn luyện thay đổi. Ensemble Learning kết hợp nhiều mô hình để giảm tác động của những sai lệch riêng. Bài này giới thiệu các họ phương pháp, sau đó đi sâu vào bootstrap và hard voting qua Bagging tự triển khai. Mã cây cơ sở dùng scikit-learn; phần lấy mẫu và tổng hợp phiếu do nhóm tự viết. Trước khi nộp, điền tên thành viên và lớp trên trang bìa. Gợi ý thời lượng phần chính khoảng 15–20 phút; hai trang cuối là phụ lục.
+Mở đầu: Một cây quyết định có thể thay đổi đáng kể khi dữ liệu huấn luyện thay đổi. Ensemble Learning kết hợp nhiều mô hình để giảm tác động của những sai lệch riêng. Bài này giới thiệu các họ phương pháp, sau đó đi sâu vào bootstrap và hard voting qua Bagging tự triển khai. Mã cây cơ sở dùng scikit-learn; phần lấy mẫu và tổng hợp phiếu do nhóm tự viết. Thông tin thành viên và giảng viên được lấy thống nhất từ report/group_info.json. Gợi ý thời lượng phần chính khoảng 15–20 phút; hai trang cuối là phụ lục.
 
 ## Slide 02 — Nhiều mô hình chỉ hữu ích khi có sự đa dạng
 
@@ -16,9 +16,9 @@ Ba phiếu trên trang chỉ minh họa ý tưởng, không phải dự đoán t
 
 Đây là các hướng tiếp cận phổ biến, không phải bốn nhóm tách rời tuyệt đối: Bagging cũng cần một quy tắc tổng hợp như voting. Bagging tạo đa dạng bằng lấy mẫu; Boosting xây dãy mô hình để xử lý sai sót; Voting có thể kết hợp các mô hình khác loại; Stacking học bộ kết hợp từ dự đoán ngoài mẫu. Trọng tâm triển khai của bài là Bagging, nhưng cần hiểu vị trí của nó trong toàn bộ Ensemble Learning. Random Forest là một mở rộng của ý tưởng Bagging cây với ngẫu nhiên hóa đặc trưng.
 
-## Slide 04 — Đa dạng giúp giảm phương sai
+## Slide 04 — Vì sao Bagging có thể ổn định hơn?
 
-Công thức này giải thích trực giác giảm phương sai khi lấy trung bình các dự đoán số. Giả thiết các mô hình có phương sai như nhau σ bình phương và tương quan cặp chung rho. Với 51 mô hình, rho bằng 0,2 cho phương sai trung bình khoảng 0,216 lần phương sai riêng, còn rho bằng 0,8 chỉ giảm xuống khoảng 0,804. Đây không phải công thức trực tiếp của tỷ lệ lỗi phân lớp. Với hard voting, hiệu quả còn phụ thuộc mô hình cơ sở và cấu trúc lỗi. Không thể nói ensemble luôn tốt hơn.
+Phần chính chỉ cần hiểu rằng cây quyết định có thể thay đổi khi dữ liệu train đổi; lấy nhiều bootstrap và tổng hợp giúp giảm dao động khi các cây không mắc lỗi quá giống nhau. Công thức bổ sung nếu được hỏi: Var(trung bình) = σ²[ρ + (1−ρ)/B], với B là số mô hình, σ² là phương sai chung, ρ là tương quan cặp chung. Với B=51, ρ=0,2 cho khoảng 0,216σ²; ρ=0,8 cho khoảng 0,804σ². Công thức áp dụng cho trung bình dự đoán số dưới các giả thiết trên, không phải công thức trực tiếp của lỗi hard voting. Không cần chứng minh công thức trong phần thuyết trình chính và không kết luận ensemble luôn tốt hơn.
 
 ## Slide 05 — Hard Voting và Soft Voting có thể cho kết quả khác
 
@@ -30,19 +30,19 @@ Bagging là viết tắt của bootstrap aggregating. Mỗi cây nhận 426 lư�
 
 ## Slide 07 — Ví dụ bootstrap: 5 quan sát, 5 lượt lấy mẫu
 
-Chỉ số 0 xuất hiện hai lần trong mẫu của cây 1, trong khi chỉ số 3 không có mặt. Các quan sát không được chọn gọi là out-of-bag đối với cây đó. Với một quan sát cố định, xác suất không chọn ở một lượt là 1 trừ 1/N; qua N lượt độc lập là lũy thừa N. Khi N lớn, xác suất tiến đến e mũ âm một, khoảng 36,8%. Với N bằng 5 trong ví dụ nhỏ, xác suất chính xác là 0,8 mũ 5 bằng 32,768%, không phải đúng 36,8%. Bản nâng cấp tính hard-vote OOB chỉ từ cây chưa thấy mẫu, đồng thời vẫn dùng test riêng để đánh giá. Điểm OOB không độc lập với bước chọn độ sâu trên train.
+Ba trang 7–9 dùng xuyên suốt cùng một ví dụ giả lập: x=[1,2,3,4,5], nhãn=[lành,lành,ác,ác,ác]. Ba bootstrap được chọn cố định để nhìn rõ sự khác nhau giữa cây; trong Bagging thực nghiệm, chúng được lấy ngẫu nhiên. Chỉ số 0 xuất hiện hai lần trong mẫu h1; chỉ số 3 vắng ở h1, chỉ số 2 vắng ở h2, chỉ số 0 vắng ở h3. Các mẫu vắng được gọi là OOB đối với cây tương ứng. Chạy python examples/toy_bagging.py --output-dir outputs/toy để tái lập toàn bộ bảng, ngưỡng và phiếu. Với N=5, xác suất một mẫu vắng là (4/5)^5=32,768%; khi N lớn mới gần 36,8%. Các bản bootstrap cụ thể được chọn để dạy cơ chế, không dùng làm thực nghiệm đánh giá hiệu năng.
 
 ## Slide 08 — Một cây học phép chia như thế nào?
 
-Đây là dữ liệu một chiều giả lập để có thể tính tay, không phải các quan sát của Breast Cancer. Cây 1 dùng bootstrap [0,0,2,4,1], tức là các cặp (1,lành), (1,lành), (3,ác), (5,ác), (2,lành). Gini trước chia bằng 0,48. Với ngưỡng 2,5, nhánh trái có ba mẫu đều lành, nhánh phải có hai mẫu đều ác. Gini mỗi nhánh bằng 0; trung bình có trọng số 3/5 nhân 0 cộng 2/5 nhân 0 cũng bằng 0. Mức giảm là 0,48. Thực tế cây thử các ngưỡng trên nhiều đặc trưng và lặp lại các phép chia đến điều kiện dừng. Trong thí nghiệm độ sâu tối đa là 3.
+Đây vẫn là dữ liệu giả lập từ slide 7, không phải quan sát Breast Cancer. Cây h1 nhận (1,lành),(1,lành),(3,ác),(5,ác),(2,lành), nên Gini=1−(3/5)^2−(2/5)^2=0,48. Ngưỡng 2,5 là trung điểm giữa 2 và 3: trái có ba mẫu lành, phải có hai mẫu ác; Gini sau chia=(3/5)×0+(2/5)×0=0. Mức giảm 0,48. Vì Gini không âm, đây là phép chia tối ưu của nút. h2 thiếu x=3 nên ranh giới giữa x=2 và x=4 là 3; h3 có ranh giới 2,5. Mỗi cây ví dụ chỉ sâu một mức; mô hình thật được chọn max_depth bằng CV. Mã ví dụ dùng sklearn tính ngưỡng rồi xuất JSON để đối chiếu phép tính tay.
 
-## Slide 09 — Từ phiếu riêng lẻ đến quyết định của tổ hợp
+## Slide 09 — Cùng một mẫu mới, ba cây cho hai phía phiếu
 
-I là hàm chỉ thị: đúng thì nhận 1, sai thì nhận 0. Cộng theo tất cả cây cho từng lớp c. Với ba dự đoán giả định [0,1,0], lớp 0 có hai phiếu còn lớp 1 có một phiếu, nên argmax chọn 0, tức ác tính. Đây là ví dụ riêng để tính phép tổng hợp, không khẳng định là đầu ra của ba cây trong ví dụ chia nút trước đó. Trong triển khai dùng 51 cây cho hai lớp nên không hòa phiếu. Nếu áp dụng đa lớp thì số cây lẻ vẫn có thể hòa; hàm argmax khi hòa chọn chỉ số lớp đầu tiên.
+Đây là dự đoán thật của ba cây một mức đã học từ chính ba bootstrap ở slide 7. h1 và h3 có ngưỡng 2,5 nên x=2,8 đi sang phải và nhận nhãn ác. h2 có ngưỡng 3 nên x=2,8 đi sang trái và nhận nhãn lành. Hai phiếu ác thắng một phiếu lành. Công thức H(x)=argmax_c Σ_b I[h_b(x)=c]: I là hàm chỉ thị, đếm số cây chọn từng lớp rồi lấy lớp có phiếu lớn nhất. Mẫu mới x=2,8 chưa có nhãn thật nên không kết luận dự đoán đúng hay sai; đây là dữ liệu giả lập, không phải một bệnh nhân. Tỷ lệ 2/3 cũng không phải xác suất bệnh đã hiệu chỉnh. Dùng python examples/toy_bagging.py --output-dir outputs/toy để kiểm tra. Khi hai lớp và 51 cây thì không hòa; đa lớp vẫn có thể hòa, mã chọn lớp đầu trong classes_.
 
-## Slide 10 — Boosting: mô hình sau tập trung vào sai sót trước
+## Slide 10 — Boosting: học tiếp từ những sai sót trước
 
-AdaBoost là ví dụ để giải thích Boosting chứ chưa được triển khai trong mã thực nghiệm này. Nhãn và dự đoán trong công thức cập nhật cổ điển được mã hóa âm một và dương một. Sai số epsilon là tổng trọng số của các mẫu sai, không nhất thiết là tỷ lệ đếm mẫu. Nếu epsilon bằng 0,2, trọng số mô hình alpha bằng một nửa log tự nhiên của bốn, khoảng 0,693. Nhóm sai nhân hai, nhóm đúng nhân một phần hai; chuẩn hóa xong tổng trọng số nhóm sai tăng từ 0,2 lên 0,5. Gradient Boosting lại xây mô hình theo hướng giảm loss, thường khớp gradient âm; không mô tả mọi Boosting bằng duy nhất cập nhật AdaBoost này.
+Đây là tổng quan để phân biệt Boosting với Bagging; phần chính không cần đi sâu công thức. AdaBoost chưa được triển khai trong mã thực nghiệm này. Số 20%→50% là ví dụ cập nhật trọng số, không phải accuracy hay phần trăm mẫu bị thay nhãn. Nếu được hỏi phép tính: với sai số có trọng số ε=0,2, α=½ln((1−ε)/ε)=0,693; nhóm sai nhân exp(α)=2, nhóm đúng nhân exp(−α)=0,5; sau chuẩn hóa, khối lượng trọng số nhóm sai là 0,2×2/(0,2×2+0,8×0,5)=0,5. Nhãn trong cập nhật cổ điển mã hóa −1,+1. Gradient Boosting giảm loss qua chuỗi mô hình, không dùng nguyên xi quy tắc AdaBoost này. Có thể nói ngắn slide 10–11 để dành thời gian cho Bagging tự triển khai.
 
 ## Slide 11 — Stacking học một mô hình để kết hợp các mô hình
 
@@ -88,13 +88,13 @@ Trong ma trận này hàng là nhãn thật, cột là nhãn dự đoán; thứ 
 
 Bản nâng cấp đã chạy 10 seed và báo cáo SD mẫu, nhưng các test có thể giao nhau nên chúng không phải mười tập kiểm định độc lập. Thiết kế chọn độ sâu bằng cây đơn có thể không phải tốt nhất cho Bagging hay Random Forest. OOB là đánh giá phụ vì depth đã chọn trên train trước đó. Nếu tuning riêng hoặc khảo sát số cây, phải dùng train/CV và giữ test ngoài lựa chọn cấu hình. Boosting và Stacking vẫn mới được giải thích lý thuyết, chưa phải mô hình đã đo trong bảng kết quả. Chưa có kiểm định ngoài trên quần thể độc lập; ứng dụng y tế cần dữ liệu và quy trình xác thực phù hợp hơn nhiều.
 
-## Slide 22 — Demo nhanh hoặc chạy đầy đủ 10 seed
+## Slide 22 — Demo: hiểu cơ chế trước, xem kết quả sau
 
-Mở terminal tại thư mục kho, dùng Python đã cài requirements.txt. Trên Windows có thể dùng py thay python. Thêm --repeats 1 --output-dir outputs/quick để demo nhanh vào thư mục riêng; khi đó summary chỉ có một lần chạy và SD là null, không phải 0. Lệnh không có tham số chạy 10 seed từ 42 đến 51. results.json có seed tham chiếu, OOB, ví dụ bất đồng và tổng hợp nhiều lần chạy; report.md giải thích kết quả. metrics.csv và predictions.csv thuộc seed tham chiếu, repeated_metrics.csv chứa từng seed, summary_metrics.csv chứa mean và SD. Mỗi lần chạy ghi đè các tệp cùng tên trong output-dir; outputs/quick giữ riêng kết quả demo và bảo toàn kết quả 10 seed trong outputs. Các slide này được tạo từ kết quả đầy đủ 10 seed, không được suy ra bảng đó từ demo một seed.
+Mở terminal tại thư mục kho, dùng Python đã cài requirements.txt; trong cloud có thể thay python bằng .venv/bin/python. Chạy ví dụ nhỏ trước để thấy ba ngưỡng 2,5;3;2,5 và hai phiếu ác thắng một phiếu lành ở x=2,8. Sau đó chạy mô hình thật với --repeats 1 --output-dir outputs/quick. Demo một seed không tạo SD bằng 0; SD không xác định nên lưu null. Lệnh python de_5_ensemble_learning.py không có tham số chạy đủ 10 seed 42–51 vào outputs/. results.json lưu cấu hình, OOB, trace và số liệu; report.md giải thích thí nghiệm. Báo cáo bài viết hoàn chỉnh nằm ở report/Bao_cao_De_5_Ensemble_Learning.docx và PDF cùng tên, khác PDF slide ở thư mục gốc. Mỗi lần chạy thay thế các tệp cùng tên trong output-dir; thư mục quick giữ riêng demo. Các bảng nhiều seed trên slide lấy từ chạy đầy đủ, không suy từ demo một seed. Chuẩn bị sẵn output làm phương án dự phòng nếu buổi trình bày không chạy được máy.
 
 ## Slide 23 — Ba điều cần nhớ
 
-Kết lại ba ý. Một: hiệu quả ensemble đến từ cả chất lượng mô hình cơ sở lẫn sự đa dạng. Hai: Bagging gồm lấy mẫu có hoàn lại, học độc lập và tổng hợp; mã còn có OOB đúng theo các cây chưa thấy mẫu. Ba: seed tham chiếu đạt 95,10% accuracy và vẫn bỏ sót bốn ca ác tính; qua 10 holdout, accuracy trung bình của Bagging khoảng 94,76% với SD mẫu 1,59 điểm phần trăm. Các holdout có giao nhau nên không suy ra độ tin cậy độc lập hoặc hiệu quả lâm sàng. Nếu nhóm ba người, có thể chia trang 1–9, 10–15 và 16–24; đây chỉ là gợi ý, không phải phân công đã xác nhận. Hai trang cuối là phụ lục hỏi đáp và phép tính chỉ số.
+Kết lại ba ý. Một: hiệu quả ensemble đến từ cả chất lượng mô hình cơ sở lẫn sự đa dạng. Hai: Bagging gồm lấy mẫu có hoàn lại, học độc lập và tổng hợp; ví dụ nhỏ đã nối đủ dữ liệu, ba bootstrap, ba cây và phiếu. Ba: seed tham chiếu đạt 95,10% accuracy và vẫn bỏ sót bốn ca ác tính; qua 10 holdout, accuracy trung bình của Bagging khoảng 94,76%, SD mẫu 1,59 điểm phần trăm. Chưa suy ra hiệu quả lâm sàng hoặc một phương pháp luôn thắng. Gợi ý tập luyện hai người: Nguyễn Nghĩa Hiếu trình bày trang 1–11, Trần Quốc Bảo trình bày trang 12–24; chuyển lời ở trang 12 từ ví dụ nhỏ sang bài toán thật. Đây là phương án chuẩn bị, không phải xác nhận lịch sử đóng góp. Cả hai cần hiểu code và sẵn sàng trả lời. Hai trang cuối dùng khi hỏi đáp.
 
 ## Slide 24 — Tài liệu tham khảo
 
