@@ -1,0 +1,4 @@
+﻿feature,value,root_uses,malignant_q25,malignant_median,malignant_q75,benign_q25,benign_median,benign_q75
+worst perimeter,109.1,16,119.25,135.1,159.9,77.99000000000001,86.82,96.675
+worst concave points,0.1489,14,0.15435,0.1827,0.21139999999999998,0.050985,0.07174,0.094615
+worst radius,16.25,9,17.6,20.42,23.825,12.03,13.35,14.73

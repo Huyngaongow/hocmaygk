@@ -62,13 +62,16 @@ def package(name):
         "De_5_Ensemble_Learning.pptx", "De_5_Ensemble_Learning.pdf",
     )]
     allowed = {".py", ".md", ".txt", ".json", ".docx", ".pdf", ".png", ".csv"}
-    for directory in ("examples", "tests", "tools", "presentation", "report"):
+    for directory in ("examples", "experiments", "tests", "tools", "presentation", "report"):
         files.extend(path for path in (ROOT / directory).rglob("*")
                      if path.is_file() and path.suffix in allowed
                      and "__pycache__" not in path.parts and "rendered" not in path.parts)
     # Include the actual experimental evidence even though outputs/ is Git-ignored.
     files.extend(path for path in (ROOT / "outputs").iterdir() if path.is_file())
     files.extend(path for path in (ROOT / "outputs/toy").iterdir() if path.is_file())
+    extension_output = ROOT / "outputs/extensions"
+    if extension_output.is_dir():
+        files.extend(path for path in extension_output.iterdir() if path.is_file())
     required = [ROOT / "report/Bao_cao_De_5_Ensemble_Learning.docx",
                 ROOT / "report/Bao_cao_De_5_Ensemble_Learning.pdf",
                 ROOT / "outputs/results.json", ROOT / "outputs/toy/toy_example.json"]
