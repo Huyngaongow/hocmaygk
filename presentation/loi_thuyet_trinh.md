@@ -1,6 +1,6 @@
 # Lời thuyết trình — Đề 5: Ensemble Learning
 
-24 slide: 22 trang chính và 2 trang phụ lục. Gợi ý khoảng 15–20 phút cho phần chính.
+26 slide: 24 trang chính và 2 trang phụ lục. Gợi ý khoảng 15–20 phút cho phần chính, rút gọn phần mở rộng khi cần.
 
 Trước khi trình bày: bổ sung tên thành viên và lớp tại slide 1.
 
@@ -30,7 +30,7 @@ Bagging là viết tắt của bootstrap aggregating. Mỗi cây nhận 426 lư�
 
 ## Slide 07 — Ví dụ bootstrap: 5 quan sát, 5 lượt lấy mẫu
 
-Chỉ số 0 xuất hiện hai lần trong mẫu của cây 1, trong khi chỉ số 3 không có mặt. Các quan sát không được chọn gọi là out-of-bag đối với cây đó. Với một quan sát cố định, xác suất không chọn ở một lượt là 1 trừ 1/N; qua N lượt độc lập là lũy thừa N. Khi N lớn, xác suất tiến đến e mũ âm một, khoảng 36,8%. Với N bằng 5 trong ví dụ nhỏ, xác suất chính xác là 0,8 mũ 5 bằng 32,768%, không phải đúng 36,8%. Chương trình chưa tính điểm OOB; bài dùng test riêng để đánh giá.
+Chỉ số 0 xuất hiện hai lần trong mẫu của cây 1, trong khi chỉ số 3 không có mặt. Các quan sát không được chọn gọi là out-of-bag đối với cây đó. Với một quan sát cố định, xác suất không chọn ở một lượt là 1 trừ 1/N; qua N lượt độc lập là lũy thừa N. Khi N lớn, xác suất tiến đến e mũ âm một, khoảng 36,8%. Với N bằng 5 trong ví dụ nhỏ, xác suất chính xác là 0,8 mũ 5 bằng 32,768%, không phải đúng 36,8%. Bản nâng cấp tính hard-vote OOB chỉ từ cây chưa thấy mẫu, đồng thời vẫn dùng test riêng để đánh giá. Điểm OOB không độc lập với bước chọn độ sâu trên train.
 
 ## Slide 08 — Một cây học phép chia như thế nào?
 
@@ -58,7 +58,7 @@ Chia dữ liệu bằng train_test_split với stratify bằng nhãn và random_
 
 ## Slide 14 — Tự viết hai phần cốt lõi: bootstrap và voting
 
-Đây là mã trích lược để vừa slide; dấu ba chấm thay phần cấp seed riêng cho mỗi cây, còn mã đầy đủ nằm trong file Python. rng.integers tạo len(X) chỉ số trong khoảng từ 0 đến len(X) trừ một, cho phép trùng chỉ số. encoded là nhãn đã ánh xạ sang chỉ số lớp bởi np.unique. Mỗi cây dùng các hàng X và nhãn theo cùng indices. Phần voting tạo ma trận số cây nhân số quan sát; so sánh với một lớp và cộng dọc theo trục cây để đếm số phiếu. Cuối cùng argmax lấy lớp có nhiều phiếu, rồi ánh xạ về nhãn gốc. Không nhận phần cài cây quyết định là tự viết.
+Đây là mã trích lược từ ensemble_model.py để vừa slide; dấu ba chấm thay phần cấp seed riêng cho mỗi cây. de_5_ensemble_learning.py điều phối thí nghiệm và xuất báo cáo. rng.integers tạo N chỉ số trong khoảng từ 0 đến N trừ một, cho phép trùng chỉ số. encoded là nhãn đã ánh xạ sang chỉ số lớp bởi np.unique. Mỗi cây dùng các hàng X và nhãn theo cùng indices. Phần voting khởi tạo ma trận số quan sát nhân số lớp, rồi np.add.at tăng một ở ô tương ứng với từng dự đoán của từng cây. Cuối cùng argmax lấy lớp có nhiều phiếu, rồi ánh xạ về nhãn gốc. Mã kiểm tra dữ liệu, hỗ trợ nhãn không liên tiếp và tương thích clone/CV của sklearn. Không nhận phần cài cây quyết định là tự viết.
 
 ## Slide 15 — Bagging tự viết và Random Forest khác nhau ở đâu?
 
@@ -66,36 +66,44 @@ Cả hai phương pháp sử dụng bootstrap nhưng Random Forest ngẫu nhiên
 
 ## Slide 16 — Bagging cải thiện nhẹ trên lần chia test này
 
-Cây đơn đạt accuracy 94,41%, Bagging và Random Forest cùng đạt 95,10%. Precision, recall và F1 trên bảng đều lấy ác tính làm lớp dương, mặc dù mã nhãn là 0; cần nêu rõ vì nhiều thư viện mặc định lớp 1 là dương. Accuracy của Bagging tương đương dự đoán đúng 136 trên 143 mẫu, cao hơn cây đơn đúng một mẫu. Mức chênh là khoảng 0,70 điểm phần trăm, không phải 0,70% cải thiện tương đối. Hai mô hình có cùng chỉ số tổng hợp không đủ để suy ra giống nhau trên mọi quan sát hoặc mọi dữ liệu. Cần đánh giá lặp lại nếu muốn so sánh chắc chắn.
+Bảng này chỉ thuộc seed tham chiếu 42: cây đơn đạt accuracy 94,41%, Bagging và Random Forest cùng đạt 95,10%. Precision, recall và F1 lấy ác tính làm lớp dương, mặc dù mã nhãn là 0. Accuracy của Bagging tương đương đúng 136 trên 143 mẫu, cao hơn cây đơn đúng một mẫu. Mức chênh là khoảng 0,70 điểm phần trăm, không phải 0,70% cải thiện tương đối. Hai mô hình có cùng chỉ số tổng hợp không đủ để suy ra giống nhau trên mọi quan sát. Bản nâng cấp còn chạy 10 seed và sẽ báo cáo ở trang tiếp theo; không trộn điểm seed 42 với điểm trung bình nhiều split.
 
-## Slide 17 — Nhìn vào ca bỏ sót, không chỉ accuracy
+## Slide 17 — Đánh giá lại trên 10 lần chia phân tầng
+
+Đánh giá bổ sung gồm các seed cố định từ 42 đến 51, không chọn seed có điểm đẹp nhất. Trong mỗi lần chạy, ba mô hình dùng cùng một train/test phân tầng; độ sâu được chọn lại bằng CV trên train của chính seed đó, sau đó dùng chung. Mỗi test có 143 mẫu nhưng các test giữa các seed có thể giao nhau. Trung bình accuracy của cây đơn, Bagging và Random Forest lần lượt là khoảng 92,80%, 94,76% và 95,03%. SD mẫu dùng ddof bằng 1; độ biến thiên accuracy tương ứng khoảng 1,84, 1,59 và 1,85 điểm phần trăm. Đây là thống kê mô tả chứ không phải khoảng tin cậy độc lập. RF có accuracy trung bình cao hơn nhẹ, Bagging có recall ác tính trung bình cao hơn nhẹ; chưa thể coi là bằng chứng một phương pháp luôn thắng.
+
+## Slide 18 — Out-of-bag: chỉ bỏ phiếu cho mẫu cây chưa học
+
+Tại seed 42, Bagging có accuracy hard-vote OOB bằng 401 chia 426, khoảng 94,13%, và coverage 100%. Mỗi mẫu nhận phiếu từ 8 đến 34 cây không thấy nó trong bootstrap, không phải cùng nhận đủ 51 phiếu. Mã tính mask không có mặt bằng bincount, rồi chỉ dự đoán các hàng đó để tích lũy phiếu OOB. Với số cây ít hơn có thể có mẫu không nhận phiếu: oob_decision_function_ đánh dấu NaN và điểm chỉ tính trên các mẫu được bao phủ. Quan trọng: độ sâu đã được chọn trên train bằng CV, nên điểm OOB tính sau đó không hoàn toàn độc lập với lựa chọn siêu tham số. OOB là chẩn đoán bổ sung, không thay thế kết quả test riêng và không phải xác suất chẩn đoán.
+
+## Slide 19 — Nhìn vào ca bỏ sót, không chỉ accuracy
 
 Trong ma trận này hàng là nhãn thật, cột là nhãn dự đoán; thứ tự cả hai trục là ác tính rồi lành tính. Vì ác tính là lớp dương, ô trên trái là TP, ô trên phải là FN. Cây đơn có TP 48 và FN 5; Bagging có TP 49 và FN 4. Cả hai có FP 3 và TN 87. Recall Bagging bằng 49 chia 53, khoảng 92,45%. Precision bằng 49 chia 52, khoảng 94,23%. Giảm được một ca bỏ sót trên tập test này là một quan sát thực nghiệm, chưa chứng minh lợi ích đáng tin cậy khi triển khai thực tế. Ma trận của Random Forest trùng các số đếm tổng hợp của Bagging trong lần chạy.
 
-## Slide 18 — Theo dấu một dự đoán thật trong chương trình
+## Slide 20 — Phiếu bất đồng có thể dẫn đến dự đoán sai
 
-Phân biệt với các ví dụ giả định trước: đây là trace thật đã lưu trong results.json. Với quan sát test đầu tiên, nhãn thật là benign, tức lành tính. Mười chỉ số trên là vị trí hàng trong X_train, không phải mã bệnh nhân hay chỉ số gốc của toàn bộ dataset. Cây 1 thực tế lấy 426 chỉ số; slide chỉ hiển thị mười chỉ số đầu để dễ đọc. Cả năm cây đầu đều dự đoán lành tính; tổng cả 51 cây có không phiếu ác tính và 51 phiếu lành tính. Chương trình dự đoán đúng quan sát này. Một quan sát đúng không thay thế đánh giá toàn bộ test.
+Đây là trace thật của seed 42, không phải ví dụ giả định. Chương trình chọn mẫu test đầu tiên có phiếu chia hai phía, không chọn theo việc dự đoán đúng. Mẫu ở vị trí test 2 ứng với hàng 291 trong dữ liệu gốc; các chỉ số đều đếm từ 0, không phải mã bệnh nhân. Có 27 phiếu ác tính và 24 phiếu lành tính, nên hard voting chọn ác tính. Nhãn thật là lành tính, do đó đây là một dương tính giả. Có tổng 45 trong 143 mẫu test có bất đồng giữa cây. Tỷ lệ 27 trên 51 là tỷ lệ hard-vote, không phải xác suất bệnh đã hiệu chỉnh. Ví dụ cũ của quan sát test đầu tiên vẫn lưu trong worked_example: 0 phiếu ác và 51 phiếu lành, dự đoán đúng. Hai ví dụ cho thấy đồng thuận hoặc bất đồng đều phải kiểm tra bằng nhãn thật.
 
-## Slide 19 — Kết quả có ích, nhưng phạm vi kết luận còn hẹp
+## Slide 21 — Kết quả có ích, nhưng phạm vi kết luận còn hẹp
 
-Mức cải thiện nhỏ nên cần tránh khẳng định mạnh. Thiết kế chọn độ sâu bằng cây đơn có thể không phải tốt nhất cho Bagging hay Random Forest. Những mở rộng như nhiều seed, cross-validation lặp lại hoặc tuning riêng cần giữ dữ liệu đánh giá độc lập với quá trình chọn cấu hình. Nếu nghiên cứu độ nhạy theo số cây thì chọn dãy số cây bằng train/CV, không nhìn test rồi chọn số cây tốt nhất. Boosting và Stacking mới được giải thích lý thuyết trong bài này, chưa phải các mô hình đã được đo trong bảng kết quả. Muốn đi tới ứng dụng y tế cần dữ liệu và quy trình xác thực phù hợp hơn nhiều.
+Bản nâng cấp đã chạy 10 seed và báo cáo SD mẫu, nhưng các test có thể giao nhau nên chúng không phải mười tập kiểm định độc lập. Thiết kế chọn độ sâu bằng cây đơn có thể không phải tốt nhất cho Bagging hay Random Forest. OOB là đánh giá phụ vì depth đã chọn trên train trước đó. Nếu tuning riêng hoặc khảo sát số cây, phải dùng train/CV và giữ test ngoài lựa chọn cấu hình. Boosting và Stacking vẫn mới được giải thích lý thuyết, chưa phải mô hình đã đo trong bảng kết quả. Chưa có kiểm định ngoài trên quần thể độc lập; ứng dụng y tế cần dữ liệu và quy trình xác thực phù hợp hơn nhiều.
 
-## Slide 20 — Demo: chạy một lệnh, xem ba loại đầu ra
+## Slide 22 — Demo nhanh hoặc chạy đầy đủ 10 seed
 
-Nếu demo trực tiếp, mở terminal tại kho và chạy bằng Python của môi trường đã cài requirements.txt. Trong workspace hiện tại, các thư viện đã có sẵn và mã đã chạy thành công. Với môi trường mới làm theo README để tạo venv và cài dependencies. Mở results.json để chỉ ra selected_depth bằng 3, train_size bằng 426 và test_size bằng 143; sau đó chỉ vào all_51_votes. Cuối cùng mở metrics.csv hoặc ảnh ma trận lỗi. Đầu ra được tạo lại vào thư mục outputs. Nếu thời gian thuyết trình ngắn, dùng các số liệu và trace đã nhúng trong slide thay cho chờ chạy trực tiếp.
+Mở terminal tại thư mục kho, dùng Python đã cài requirements.txt. Trên Windows có thể dùng py thay python. Thêm --repeats 1 --output-dir outputs/quick để demo nhanh vào thư mục riêng; khi đó summary chỉ có một lần chạy và SD là null, không phải 0. Lệnh không có tham số chạy 10 seed từ 42 đến 51. results.json có seed tham chiếu, OOB, ví dụ bất đồng và tổng hợp nhiều lần chạy; report.md giải thích kết quả. metrics.csv và predictions.csv thuộc seed tham chiếu, repeated_metrics.csv chứa từng seed, summary_metrics.csv chứa mean và SD. Mỗi lần chạy ghi đè các tệp cùng tên trong output-dir; outputs/quick giữ riêng kết quả demo và bảo toàn kết quả 10 seed trong outputs. Các slide này được tạo từ kết quả đầy đủ 10 seed, không được suy ra bảng đó từ demo một seed.
 
-## Slide 21 — Ba điều cần nhớ
+## Slide 23 — Ba điều cần nhớ
 
-Kết lại ba ý. Một: hiệu quả ensemble đến từ cả chất lượng mô hình cơ sở lẫn sự đa dạng, không đơn giản là càng nhiều mô hình càng tốt. Hai: Bagging gồm lấy mẫu có hoàn lại, học độc lập và tổng hợp; trong bài nhóm làm rõ hai phần bootstrap và hard voting bằng mã. Ba: kết quả tốt hơn nhẹ trên test hiện tại nhưng vẫn có ca ác tính bị bỏ sót và chưa có bằng chứng tổng quát hóa rộng. Chuyển sang trang tài liệu tham khảo hoặc phần câu hỏi. Nếu nhóm ba thành viên, có thể chia các trang 1–9 cho người thứ nhất, 10–15 cho người thứ hai, 16–22 cho người thứ ba; đây chỉ là gợi ý, không phải phân công đã xác nhận.
+Kết lại ba ý. Một: hiệu quả ensemble đến từ cả chất lượng mô hình cơ sở lẫn sự đa dạng. Hai: Bagging gồm lấy mẫu có hoàn lại, học độc lập và tổng hợp; mã còn có OOB đúng theo các cây chưa thấy mẫu. Ba: seed tham chiếu đạt 95,10% accuracy và vẫn bỏ sót bốn ca ác tính; qua 10 holdout, accuracy trung bình của Bagging khoảng 94,76% với SD mẫu 1,59 điểm phần trăm. Các holdout có giao nhau nên không suy ra độ tin cậy độc lập hoặc hiệu quả lâm sàng. Nếu nhóm ba người, có thể chia trang 1–9, 10–15 và 16–24; đây chỉ là gợi ý, không phải phân công đã xác nhận. Hai trang cuối là phụ lục hỏi đáp và phép tính chỉ số.
 
-## Slide 22 — Tài liệu tham khảo
+## Slide 24 — Tài liệu tham khảo
 
 Các nguồn 1 và 2 là các bài báo gốc về Bagging và Random Forest. Nguồn 6 cho AdaBoost và nguồn 7 cho Stacking. Tài liệu scikit-learn giải thích các lớp thư viện và đặc tính dataset. Số liệu thực nghiệm trong bài được lấy từ outputs/results.json của kho, không lấy từ các bài báo hoặc benchmark bên ngoài. Mã và requirements.txt đi kèm để tái lập; sử dụng cùng seed và phiên bản giúp giảm khác biệt do môi trường. Các URL có thể bấm trong PowerPoint. PDF đề bài yêu cầu đủ nguyên lý, quy trình, ứng dụng và mã nguồn; phần trình bày đã lần lượt bao phủ các nội dung này.
 
-## Slide 23 — Câu hỏi thường gặp khi bảo vệ
+## Slide 25 — Câu hỏi thường gặp khi bảo vệ
 
 Đây là phụ lục cho hỏi đáp, không bắt buộc trình bày hết. Nếu được hỏi số cây có tối ưu không, trả lời trung thực là chưa; 51 là cấu hình minh họa cố định, không chọn dựa trên test. Nếu được hỏi bootstrap có mất dữ liệu không, mỗi cây có thể không thấy một phần dữ liệu nhưng các cây sử dụng các mẫu khác nhau; không đảm bảo mọi mẫu đều được thấy ở mọi cây. Nếu được hỏi vì sao Random Forest bằng Bagging, các số liệu tổng hợp trùng nhau trong lần chạy không chứng minh hai mô hình tương đương. Nếu được hỏi có thể chẩn đoán không, trả lời chưa có kiểm định lâm sàng và thí nghiệm vẫn bỏ sót ca ác tính.
 
-## Slide 24 — Cách tính chỉ số với ác tính là lớp dương
+## Slide 26 — Cách tính chỉ số với ác tính là lớp dương
 
 Dùng trang này khi cần giải thích cụ thể các con số. Quy ước dương là ác tính dù mã nhãn bằng 0. TP là ca ác được dự đoán ác; FN là ca ác bị dự đoán lành; FP là ca lành bị dự đoán ác; TN là ca lành được dự đoán lành. Tổng mẫu bằng 49 cộng 4 cộng 3 cộng 87 bằng 143. F1 là trung bình điều hòa của precision và recall, tương đương công thức hai TP chia hai TP cộng FP cộng FN. Balanced accuracy trung bình recall của hai lớp được dùng để chọn độ sâu trong CV, khác accuracy thường ở bảng test. Nếu mẫu test thiếu một lớp thì cần xem lại cách diễn giải; ở đây cả hai lớp đều có mặt.
