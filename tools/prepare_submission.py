@@ -12,6 +12,16 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 
 ROOT = Path(__file__).resolve().parents[1]
+FINAL_REPORT = ROOT / "report/Bao_cao_Ensemble_Learning_da_hoan_thien.docx"
+FINAL_REPORT_PDF = FINAL_REPORT.with_suffix(".pdf")
+LEGACY_REPORT_STEM = "Bao_cao_De_5_Ensemble_Learning"
+
+
+def final_report_ready():
+    present = [path.is_file() for path in (FINAL_REPORT, FINAL_REPORT_PDF)]
+    if any(present) and not all(present):
+        raise RuntimeError("Báo cáo hoàn thiện cần đủ cả Word và PDF; không thay bằng bản nháp.")
+    return all(present)
 
 
 def run(*args):
@@ -56,6 +66,7 @@ def submission_name():
 
 
 def package(name):
+    use_final_report = final_report_ready()
     files = [ROOT / name for name in (
         "README.md", "HUONG_DAN_NOP_BAI.md", "requirements.txt",
         "ensemble_model.py", "de_5_ensemble_learning.py",
@@ -65,16 +76,18 @@ def package(name):
     for directory in ("examples", "experiments", "tests", "tools", "presentation", "report"):
         files.extend(path for path in (ROOT / directory).rglob("*")
                      if path.is_file() and path.suffix in allowed
-                     and "__pycache__" not in path.parts and "rendered" not in path.parts)
+                     and "__pycache__" not in path.parts and "rendered" not in path.parts
+                     and not (use_final_report and path.stem == LEGACY_REPORT_STEM))
     # Include the actual experimental evidence even though outputs/ is Git-ignored.
     files.extend(path for path in (ROOT / "outputs").iterdir() if path.is_file())
     files.extend(path for path in (ROOT / "outputs/toy").iterdir() if path.is_file())
     extension_output = ROOT / "outputs/extensions"
     if extension_output.is_dir():
         files.extend(path for path in extension_output.iterdir() if path.is_file())
-    required = [ROOT / "report/Bao_cao_De_5_Ensemble_Learning.docx",
-                ROOT / "report/Bao_cao_De_5_Ensemble_Learning.pdf",
-                ROOT / "outputs/results.json", ROOT / "outputs/toy/toy_example.json"]
+    required = ([FINAL_REPORT, FINAL_REPORT_PDF] if use_final_report else [
+        ROOT / f"report/{LEGACY_REPORT_STEM}.docx",
+        ROOT / f"report/{LEGACY_REPORT_STEM}.pdf",
+    ]) + [ROOT / "outputs/results.json", ROOT / "outputs/toy/toy_example.json"]
     if any(not path.is_file() for path in files + required):
         raise RuntimeError("Bộ nộp còn thiếu tệp bắt buộc.")
     files = sorted(set(files))
@@ -107,14 +120,19 @@ def main():
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v")
     run(sys.executable, "de_5_ensemble_learning.py")
     run(sys.executable, "examples/toy_bagging.py", "--output-dir", "outputs/toy")
-    run(sys.executable, "report/create_report.py")
+    run(sys.executable, "experiments/report_extensions.py")
+    run(sys.executable, "experiments/controlled_comparison.py")
     run(sys.executable, "presentation/create_presentation.py")
-    convert_pdf(ROOT / "report/Bao_cao_De_5_Ensemble_Learning.docx",
-                ROOT / "report/Bao_cao_De_5_Ensemble_Learning.pdf")
-    run(sys.executable, "report/create_report.py", "--toc-pdf",
-        "report/Bao_cao_De_5_Ensemble_Learning.pdf")
-    convert_pdf(ROOT / "report/Bao_cao_De_5_Ensemble_Learning.docx",
-                ROOT / "report/Bao_cao_De_5_Ensemble_Learning.pdf")
+    if final_report_ready():
+        print("Giữ nguyên báo cáo Word/PDF đã hoàn thiện theo form của nhóm.", flush=True)
+    else:
+        run(sys.executable, "report/create_report.py")
+        convert_pdf(ROOT / f"report/{LEGACY_REPORT_STEM}.docx",
+                    ROOT / f"report/{LEGACY_REPORT_STEM}.pdf")
+        run(sys.executable, "report/create_report.py", "--toc-pdf",
+            f"report/{LEGACY_REPORT_STEM}.pdf")
+        convert_pdf(ROOT / f"report/{LEGACY_REPORT_STEM}.docx",
+                    ROOT / f"report/{LEGACY_REPORT_STEM}.pdf")
     convert_pdf(ROOT / "De_5_Ensemble_Learning.pptx", ROOT / "De_5_Ensemble_Learning.pdf")
     package(name)
 

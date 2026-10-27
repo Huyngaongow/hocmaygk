@@ -11,8 +11,10 @@ hard voting và out-of-bag (OOB) cho Bagging cây quyết định. So sánh vớ
 cây đơn và Random Forest; đánh giá trên 10 lần chia dữ liệu có phân tầng.
 Cây cơ sở và Random Forest do scikit-learn cung cấp.
 
-Đọc báo cáo tại `report/Bao_cao_De_5_Ensemble_Learning.pdf` hoặc bản Word
-cùng tên. Hướng dẫn demo, phân chia phần nói và đóng gói:
+Đọc [báo cáo hoàn thiện theo form của nhóm (PDF, 51 trang)](report/Bao_cao_Ensemble_Learning_da_hoan_thien.pdf)
+hoặc [bản Word có thể chỉnh sửa](report/Bao_cao_Ensemble_Learning_da_hoan_thien.docx).
+Báo cáo gồm sáu chương, có thuật toán, code, khảo sát số cây, phân tích lỗi
+và đối chứng hard/soft voting. Hướng dẫn demo, phân chia phần nói và đóng gói:
 [`HUONG_DAN_NOP_BAI.md`](HUONG_DAN_NOP_BAI.md).
 
 ## Chạy trên Windows (PowerShell)
@@ -226,6 +228,20 @@ lành, nên dự đoán **sai**. Mẫu này được chọn theo thứ tự, kh�
   hồi quy seed 42 và chạy CLI với số cây khác mặc định.
 - `examples/toy_bagging.py`: ví dụ nhỏ cùng một luồng từ bootstrap đến voting;
   có kiểm thử riêng cho ngưỡng, phiếu và các mẫu OOB.
+- `experiments/report_extensions.py`: khảo sát số cây chỉ trên train và truy vết mẫu sai.
+- `experiments/controlled_comparison.py`: đối chứng 2 × 2, mức bất đồng,
+  so sánh theo cặp và kiểm chứng thống kê bootstrap.
+
+Để tái lập các phần bổ sung sau thí nghiệm mặc định:
+
+```bash
+.venv/bin/python experiments/report_extensions.py
+.venv/bin/python experiments/controlled_comparison.py
+```
+
+Xem [`experiments/README.md`](experiments/README.md) để đọc giao thức và các tệp
+kết quả trong `outputs/extensions/`. Các khảo sát bổ sung không dùng tập test
+để điều chỉnh mô hình và không thay kết quả test gốc.
 
 `ManualBagging` hỗ trợ `get_params`, `set_params`, `clone` và cross-validation
 của sklearn. `votes(X)` trả số phiếu; `predict_vote_fraction(X)` trả tỷ lệ
@@ -238,15 +254,15 @@ Chạy kiểm thử bằng cùng Python đã cài dependencies:
 py -m unittest discover -s tests -v
 ```
 
-Không cần cài thêm pytest. Bộ kiểm thử gồm cả workflow thực và ví dụ tính tay,
-không chỉ cú pháp.
+Không cần cài thêm pytest. **26/26 kiểm thử đạt**, gồm workflow thực, ví dụ
+tính tay, hard/soft voting, ánh xạ xác suất và phép đo bất đồng.
 
 ## Slide và tài liệu nộp
 
 | Tài liệu | Vị trí |
 |---|---|
-| Báo cáo Word và PDF | `report/Bao_cao_De_5_Ensemble_Learning.docx` / `.pdf` |
-| Nguồn nội dung báo cáo | `report/Bao_cao_De_5_Ensemble_Learning.md` |
+| Báo cáo hoàn thiện Word và PDF | `report/Bao_cao_Ensemble_Learning_da_hoan_thien.docx` / `.pdf` |
+| Nội dung phân tích bổ sung | `report/Bo_sung_phan_tich_va_thuc_nghiem.md`, `report/Nang_cao_phan_tich_hoc_thuat.md` |
 | Slide PowerPoint và PDF | `De_5_Ensemble_Learning.pptx` / `.pdf` |
 | Lời thuyết trình | `presentation/loi_thuyet_trinh.md` |
 | Demo, hỏi đáp và quy trình nộp | `HUONG_DAN_NOP_BAI.md` |
@@ -267,7 +283,9 @@ Poppler/`pdftotext` để cập nhật mục lục):
 Lệnh kiểm thử và chạy lại thí nghiệm trước khi tạo tài liệu; file nén cuối tại
 `submission/52400013_52400102.zip` có cả kết quả trong `outputs/` dù thư mục
 này bị Git bỏ qua. `.venv/`, `.git/` và cache không được đóng gói.
-Các tệp Word/slide sinh tự động sẽ được tạo lại; lưu riêng nếu đã sửa thủ công.
+Lệnh giữ nguyên cặp Word/PDF hoàn thiện theo form của nhóm và đưa vào gói nộp;
+bản nháp cũ không được đóng gói cùng. Các kết quả thí nghiệm và slide được tạo lại,
+nên lưu riêng nếu đã sửa thủ công PowerPoint.
 Xem `presentation/README.md` và `report/README.md` để tạo riêng từng tài liệu.
 
 ## Tài liệu tham khảo
