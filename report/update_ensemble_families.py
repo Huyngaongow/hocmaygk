@@ -14,6 +14,8 @@ import unicodedata
 import shutil
 import subprocess
 import tempfile
+import xml.etree.ElementTree as ET
+from zipfile import ZipFile
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
@@ -295,6 +297,47 @@ def refresh_pages(pdf_path):
     print(f"Updated {count} cached page references from {pdf_path}")
 
 
+def sync_page_metadata(pdf_path, report_path=REPORT):
+    """Set DOCX Pages to the rendered PDF count without resaving its content."""
+    raw = subprocess.check_output(["pdftotext", "-raw", str(pdf_path), "-"])
+    # Poppler terminates every PDF page, including blank pages, with form feed.
+    pages = raw.count(b"\f")
+    if pages < 1:
+        raise ValueError("Không xác định được số trang của PDF đã xuất.")
+    report_path = Path(report_path)
+    namespace = "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
+    with ZipFile(report_path) as source:
+        props = ET.fromstring(source.read("docProps/app.xml"))
+        page_node = props.find(f"{{{namespace}}}Pages")
+        if page_node is not None and page_node.text == str(pages):
+            return pages
+        if page_node is None:
+            page_node = ET.SubElement(props, f"{{{namespace}}}Pages")
+        page_node.text = str(pages)
+        ET.register_namespace("", namespace)
+        ET.register_namespace("vt", "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes")
+        metadata = ET.tostring(props, encoding="utf-8", xml_declaration=True)
+        with tempfile.NamedTemporaryFile(prefix=report_path.stem + "-", suffix=".docx",
+                                         dir=report_path.parent, delete=False) as handle:
+            temporary = Path(handle.name)
+        try:
+            with ZipFile(temporary, "w") as destination:
+                destination.comment = source.comment
+                for info in source.infolist():
+                    content = metadata if info.filename == "docProps/app.xml" else source.read(info)
+                    destination.writestr(deepcopy(info), content)
+            with ZipFile(temporary) as check:
+                if check.testzip() is not None:
+                    raise RuntimeError("Kiểm tra tính toàn vẹn Word sau cập nhật số trang thất bại.")
+            source.close()  # Windows must release the original before replacement.
+            temporary.chmod(report_path.stat().st_mode)
+            temporary.replace(report_path)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+    return pages
+
+
 def export_pdf():
     """Render twice, preserving native Word fields and reliable Roman PDF lists."""
     output = REPORT.with_suffix(".pdf")
@@ -323,6 +366,7 @@ def export_pdf():
         final_pdf = convert(source, final_dir, folder / "profile-final")
         shutil.copyfile(final_pdf, output)
         refresh_pages(output)
+        sync_page_metadata(output)
     print(output)
 
 
