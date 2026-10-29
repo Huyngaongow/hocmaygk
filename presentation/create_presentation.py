@@ -1,552 +1,651 @@
-"""Build the Vietnamese topic-5 presentation from verified experiment outputs.
+"""Build 24 presentation slides + 4 backup slides from verified experiment data.
 
-Run from any directory: python3 presentation/create_presentation.py
-Requires python-pptx. All slide graphics and text are editable PowerPoint shapes.
+Run from any directory: python presentation/create_presentation.py
+Text, diagrams, tables and charts remain editable in PowerPoint.
 """
-
-import json
 from pathlib import Path
+import json
 import sys
 
 from pptx import Presentation
+from pptx.chart.data import CategoryChartData
 from pptx.dml.color import RGBColor
+from pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION, XL_MARKER_STYLE
 from pptx.enum.shapes import MSO_SHAPE, MSO_CONNECTOR
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.oxml.xmlchemy import OxmlElement
+from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from examples.toy_bagging import build_toy_example
 
-RESULT = json.loads((ROOT / "outputs/results.json").read_text(encoding="utf-8"))
-OUT = ROOT / "De_5_Ensemble_Learning.pptx"
-TOY = build_toy_example()
-GROUP_PATH = ROOT / "report/group_info.json"
-GROUP = json.loads(GROUP_PATH.read_text(encoding="utf-8")) if GROUP_PATH.exists() else {}
-MEMBERS = GROUP.get("members", [])
-if len(MEMBERS) > 3:
-    raise SystemExit("Đề bài quy định nhóm không quá 3 thành viên; kiểm tra report/group_info.json.")
+
+def read(path):
+    return json.loads((ROOT / path).read_text(encoding="utf-8"))
 
 
-def group_value(key, placeholder):
-    return str(GROUP.get(key) or placeholder)
+R = read("outputs/results.json")
+E = read("outputs/extensions/analysis.json")
+C = read("outputs/extensions/controlled_comparison.json")
+G = read("report/group_info.json")
+T = build_toy_example()
+if (R.get("seed") != 42 or R.get("n_estimators") != 51
+        or R.get("selected_depth") != 3 or R.get("train_size") != 426
+        or R.get("test_size") != 143
+        or R.get("repeated_evaluation", {}).get("seeds") != list(range(42, 52))
+        or [(m["tp"], m["fn"], m["fp"], m["tn"]) for m in R["test_metrics"]]
+        != [(48, 5, 3, 87), (49, 4, 3, 87), (49, 4, 3, 87)]
+        or C.get("protocol", {}).get("n_train") != 426
+        or C.get("protocol", {}).get("n_test_excluded") != 143
+        or any(r["n_estimators"] != 51 for r in C["summary"])
+        or [r["n_estimators"] for r in E["tree_count_survey"]["summary"]]
+        != [1, 5, 11, 21, 51, 101]):
+    raise SystemExit("Cần kết quả mặc định: chạy de_5_ensemble_learning.py, "
+                     "experiments/report_extensions.py và experiments/controlled_comparison.py trước.")
+if not 1 <= len(G["members"]) <= 3:
+    raise SystemExit("Kiểm tra thông tin nhóm trong report/group_info.json.")
+
+P = Presentation()
+P.slide_width, P.slide_height = Inches(13.333333), Inches(7.5)
+P.core_properties.title = "Đề 5 — Ensemble Learning | Bagging cây quyết định"
+P.core_properties.subject = "Báo cáo giữa kỳ — Nhập môn học máy"
+P.core_properties.author = "; ".join(m["name"] for m in G["members"])
+P.core_properties.keywords = "Bagging, bootstrap, hard voting, OOB, đối chứng"
+NAVY, TEAL, BLUE = "142D46", "087F82", "416DC4"
+CORAL, WHITE, BG = "C86449", "FFFFFF", "F4F7FA"
+INK, GRAY, LINE, MINT = "192F43", "5B6B7B", "DCE4EB", "8BE0CF"
+PALE, SOFT_RED = "E9F4F1", "FAEDE8"
+FONT, MONO = "Noto Sans", "DejaVu Sans Mono"
+NOTES, TITLES = [], []
 
 
-def vn_number(value):
-    return f"{value:g}".replace(".", ",")
-
-# Các ví dụ tính tay và ma trận cố định trong bộ slide này thuộc cấu hình gốc.
-# Dừng rõ ràng nếu results.json bị thay bằng một lượt demo nhanh/cấu hình khác.
-if (
-    RESULT.get("schema_version") != 2
-    or RESULT.get("seed") != 42
-    or RESULT.get("n_estimators") != 51
-    or RESULT.get("selected_depth") != 3
-    or RESULT.get("train_size") != 426
-    or RESULT.get("test_size") != 143
-    or RESULT.get("repeated_evaluation", {}).get("seeds") != list(range(42, 52))
-    or [(row.get("tp"), row.get("fn"), row.get("fp"), row.get("tn"))
-        for row in RESULT.get("test_metrics", [])] != [(48, 5, 3, 87), (49, 4, 3, 87), (49, 4, 3, 87)]
-    or (RESULT.get("disagreement_example") or {}).get("all_tree_votes") != {"malignant": 27, "benign": 24}
-):
-    raise SystemExit("Bộ slide cần kết quả mặc định: chạy python de_5_ensemble_learning.py trước khi tạo slide.")
-
-prs = Presentation()
-prs.slide_width = Inches(13.333333)
-prs.slide_height = Inches(7.5)
-prs.core_properties.title = "Đề 5 — Ensemble Learning"
-prs.core_properties.subject = "Tiểu luận giữa kỳ — Nhập môn học máy"
-prs.core_properties.author = "; ".join(member.get("name", "") for member in MEMBERS if member.get("name")) or "Nhóm trình bày — cần bổ sung thông tin"
-prs.core_properties.keywords = "Ensemble Learning, Bagging, Voting, Boosting, Stacking"
-prs.core_properties.comments = "Generated from verified local experiment results; speaker notes included."
-
-NAVY = "102537"
-TEAL = "087E83"
-MINT = "79E2CC"
-ORANGE = "E67B47"
-CREAM = "F7F5EE"
-WHITE = "FFFFFF"
-INK = "173246"
-GRAY = "566A76"
-PALE = "E9EFEC"
-LINE = "D3DFDA"
-RED = "AD493B"
-FONT = "Noto Sans"
-MONO = "DejaVu Sans Mono"
-notes = []
+def rgb(s):
+    return RGBColor.from_string(s)
 
 
-def rect(slide, x, y, w, h, fill, line=None, radius=False):
-    obj = slide.shapes.add_shape(
-        MSO_SHAPE.ROUNDED_RECTANGLE if radius else MSO_SHAPE.RECTANGLE,
-        Inches(x), Inches(y), Inches(w), Inches(h),
-    )
-    obj.fill.solid()
-    obj.fill.fore_color.rgb = RGBColor.from_string(fill)
-    obj.line.fill.background() if line is None else None
-    if line:
-        obj.line.color.rgb = RGBColor.from_string(line)
-    if radius:
-        obj.adjustments[0] = 0.12
+def num(v, digits=2):
+    return f"{v:.{digits}f}".replace(".", ",")
+
+
+def pct(v):
+    return num(100 * v) + "%"
+
+
+def avg(row, key="balanced_accuracy"):
+    return f"{num(100 * row[key + '_mean'])} ± {num(100 * row[key + '_std'])}"
+
+
+def shape(s, x, y, w, h, fill=WHITE, stroke=None, kind=MSO_SHAPE.RECTANGLE):
+    obj = s.shapes.add_shape(kind, Inches(x), Inches(y), Inches(w), Inches(h))
+    obj.fill.solid(); obj.fill.fore_color.rgb = rgb(fill)
+    if stroke:
+        obj.line.color.rgb = rgb(stroke); obj.line.width = Pt(.8)
+    else:
+        obj.line.fill.background()
+    # Remove theme effects rather than inheriting the template's drop shadows.
+    obj._element.spPr.append(OxmlElement("a:effectLst"))
+    style = obj._element.find(qn("p:style"))
+    if style is not None:
+        effect = style.find(qn("a:effectRef"))
+        if effect is not None: effect.set("idx", "0")
+    if kind == MSO_SHAPE.ROUNDED_RECTANGLE:
+        obj.adjustments[0] = .08
     return obj
 
 
-def text(slide, x, y, w, h, content, size=20, color=INK,
-         bold=False, align=PP_ALIGN.LEFT, font=FONT, valign=MSO_ANCHOR.TOP):
-    obj = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
-    tf = obj.text_frame
-    tf.clear()
-    tf.word_wrap = True
-    tf.margin_left = tf.margin_right = Inches(0.01)
-    tf.margin_top = tf.margin_bottom = Inches(0.01)
-    tf.vertical_anchor = valign
-    for i, line in enumerate(str(content).split("\n")):
+def txt(s, x, y, w, h, value, size=22, color=INK, bold=False,
+        align=PP_ALIGN.LEFT, font=FONT, leading=1.12):
+    obj = s.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
+    tf = obj.text_frame; tf.clear(); tf.word_wrap = True
+    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+    tf.vertical_anchor = MSO_ANCHOR.TOP
+    for i, text in enumerate(str(value).split("\n")):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.text = line
-        p.alignment = align
-        p.font.name = font
-        p.font.size = Pt(size)
-        p.font.bold = bold
-        p.font.color.rgb = RGBColor.from_string(color)
-        p.space_after = Pt(5)
+        p.text = text; p.alignment = align
+        p.font.name = font; p.font.size = Pt(size)
+        p.font.bold = bold; p.font.color.rgb = rgb(color)
+        p.space_before = Pt(0); p.space_after = Pt(0)
+        p.line_spacing = leading
     return obj
 
 
-def line(slide, x1, y1, x2, y2, color=LINE, width=1.5):
-    obj = slide.shapes.add_connector(
-        MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2)
-    )
-    obj.line.color.rgb = RGBColor.from_string(color)
-    obj.line.width = Pt(width)
-    return obj
+def rule(s, x1, y1, x2, y2, color=LINE, width=1):
+    ln = s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
+    ln.line.color.rgb = rgb(color); ln.line.width = Pt(width)
+    ln._element.spPr.append(OxmlElement("a:effectLst"))
+    style = ln._element.find(qn("p:style"))
+    if style is not None:
+        effect = style.find(qn("a:effectRef"))
+        if effect is not None: effect.set("idx", "0")
+    return ln
 
 
-def arrow(slide, x, y, w=0.42, h=0.25, color=TEAL):
-    obj = slide.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, Inches(x), Inches(y), Inches(w), Inches(h))
-    obj.fill.solid()
-    obj.fill.fore_color.rgb = RGBColor.from_string(color)
-    obj.line.fill.background()
-    return obj
+def arrow(s, x, y, width=.34, color=TEAL):
+    return shape(s, x, y, width, .2, color, kind=MSO_SHAPE.RIGHT_ARROW)
 
 
-def circle(slide, x, y, diameter, fill, label="", size=22, color=WHITE):
-    obj = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(x), Inches(y), Inches(diameter), Inches(diameter))
-    obj.fill.solid()
-    obj.fill.fore_color.rgb = RGBColor.from_string(fill)
-    obj.line.fill.background()
-    if label:
-        text(slide, x, y + diameter * .21, diameter, diameter * .58, label, size, color, True, PP_ALIGN.CENTER)
-    return obj
+def panel(s, x, y, w, h, fill=BG, stroke=None):
+    return shape(s, x, y, w, h, fill, stroke, MSO_SHAPE.ROUNDED_RECTANGLE)
 
 
-def tag(slide, x, y, label, color=TEAL, w=1.8):
-    rect(slide, x, y, w, .32, color, radius=True)
-    text(slide, x + .08, y + .035, w - .16, .25, label, 10, WHITE, True)
-
-
-def card(slide, x, y, w, h, title, body, accent=TEAL, dark=False):
-    rect(slide, x, y, w, h, "1C384B" if dark else WHITE, radius=True)
-    rect(slide, x + .22, y + .25, .42, .055, accent)
-    text(slide, x + .25, y + .46, w - .5, .75, title, 23, WHITE if dark else INK, True)
-    text(slide, x + .25, y + 1.28, w - .5, h - 1.4, body, 18, "C9D8DF" if dark else GRAY)
-
-
-def slide(title, section, dark=False, source="", subtitle=None):
-    s = prs.slides.add_slide(prs.slide_layouts[6])
-    bg = s.background.fill
-    bg.solid()
-    bg.fore_color.rgb = RGBColor.from_string(NAVY if dark else CREAM)
-    rect(s, .55, .35, .35, .06, MINT if dark else TEAL)
-    text(s, 1.03, .25, 11.2, .3, section.upper(), 10, MINT if dark else TEAL, True)
-    text(s, .55, .75, 12.1, .8, title, 30, WHITE if dark else INK, True)
-    if subtitle:
-        text(s, .58, 1.5, 12, .5, subtitle, 16, "C9D8DF" if dark else GRAY)
-    line(s, .55, 7.05, 12.75, 7.05, "375161" if dark else LINE, .7)
-    text(s, .57, 7.13, 4.8, .2, "ĐỀ 5  /  ENSEMBLE LEARNING", 8, "AFC4CF" if dark else GRAY)
-    text(s, 5.0, 7.13, 7.2, .2, source, 8, "AFC4CF" if dark else GRAY, align=PP_ALIGN.RIGHT)
-    text(s, 12.3, 7.1, .45, .25, f"{len(prs.slides):02d}", 10, MINT if dark else TEAL, True, PP_ALIGN.RIGHT)
+def slide(title, section, source="", dark=False, backup=False):
+    s = P.slides.add_slide(P.slide_layouts[6])
+    s.background.fill.solid(); s.background.fill.fore_color.rgb = rgb(NAVY if dark else WHITE)
+    TITLES.append(title)
+    txt(s, .62, .29, 10.8, .25, section.upper(), 10.5, MINT if dark else TEAL, True)
+    txt(s, .62, .87, 12.08, .95, title, 30, WHITE if dark else NAVY, True)
+    rule(s, .62, 7.02, 12.7, 7.02, "35516A" if dark else LINE, .7)
+    txt(s, .62, 7.14, 3.75, .17, "ĐỀ 5 / ENSEMBLE LEARNING", 8.2, MINT if dark else GRAY)
+    txt(s, 4.2, 7.14, 7.72, .17, source, 8.2, "B5CAD8" if dark else GRAY, align=PP_ALIGN.RIGHT)
+    txt(s, 12.14, 7.1, .56, .25, f"{len(P.slides):02d}", 11, MINT if dark else TEAL, True, PP_ALIGN.RIGHT)
+    # Quiet chapter marker, including a distinct appendix indicator.
+    for i in range(4):
+        shape(s, 11.67 + .27 * i, .36, .18, .035,
+              (MINT if dark else TEAL) if backup or i == min((len(P.slides) - 1) // 6, 3)
+              else ("35516A" if dark else LINE))
     return s
 
 
-def note(s, content):
-    s.notes_slide.notes_text_frame.text = content
-    notes.append((len(prs.slides), s.shapes[2].text if s.shapes[2].has_text_frame else "", content))
+def note(s, value):
+    owner = "Nguyễn Nghĩa Hiếu" if len(P.slides) <= 13 else "Trần Quốc Bảo"
+    if len(P.slides) > 24: owner = "Cả hai — dự phòng khi hỏi đáp"
+    value = f"Người nói gợi ý: {owner}.\n\n" + value
+    s.notes_slide.notes_text_frame.text = value
+    NOTES.append((len(P.slides), TITLES[-1], value))
 
 
-def table(s, x, y, widths, row_h, rows, highlight=None, font_size=17):
-    for r, values in enumerate(rows):
+def takeaway(s, value, dark=False, y=6.31):
+    panel(s, .62, y, 12.08, .48, "213E57" if dark else PALE)
+    txt(s, .82, y + .105, 11.65, .29, value, 15.5, MINT if dark else TEAL, True)
+
+
+def label(s, x, y, value, color=TEAL, w=4):
+    txt(s, x, y, w, .28, value.upper(), 11, color, True)
+
+
+def table(s, x, y, widths, rows, row_h=.7, size=19, highlight=()):
+    for ri, values in enumerate(rows):
         xx = x
-        for c, (val, width) in enumerate(zip(values, widths)):
-            fill = NAVY if r == 0 else ("DDF1E9" if r == highlight else WHITE)
-            rect(s, xx, y + r * row_h, width - .025, row_h - .025, fill)
-            text(s, xx + .15, y + r * row_h + .12, width - .3, row_h - .16,
-                 val, font_size, WHITE if r == 0 else INK, r == 0 or r == highlight,
-                 PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER)
-            xx += width
+        for ci, (val, w) in enumerate(zip(values, widths)):
+            color = NAVY if ri == 0 else (PALE if ri in highlight else (WHITE if ri % 2 else BG))
+            shape(s, xx, y + ri * row_h, w, row_h, color)
+            txt(s, xx + .17, y + ri * row_h + .16, w - .34, row_h - .18, val,
+                size if ri else size - 1, WHITE if ri == 0 else INK, ri == 0 or ri in highlight,
+                PP_ALIGN.LEFT if ci == 0 else PP_ALIGN.CENTER)
+            xx += w
+        if ri > 0: rule(s, x, y + (ri + 1) * row_h, x + sum(widths), y + (ri + 1) * row_h, LINE, .55)
 
 
-# 01 — title
-s = slide("", "Tiểu luận giữa kỳ • Nhập môn học máy", dark=True)
-text(s, .65, 1.45, 8.0, 1.85, "ENSEMBLE\nLEARNING", 55, WHITE, True)
-text(s, .68, 3.65, 7.7, 1.0, "Từ cây quyết định\nđến mô hình tổ hợp", 27, MINT)
-text(s, .68, 5.05, 7.7, .5, "Đề 5  •  Bagging và bỏ phiếu đa số", 19, WHITE)
-member_lines = [
-    f"{member.get('name') or '[Họ tên]'}  •  MSSV: {member.get('student_id') or '[MSSV]'}"
-    for member in MEMBERS
-] or ["[Bổ sung họ tên và MSSV trong report/group_info.json]"]
-identity_lines = member_lines + [f"Giảng viên: {group_value('lecturer', '[Giảng viên]')}"]
-if GROUP.get("class_name"):
-    identity_lines.append(f"Lớp: {GROUP['class_name']}")
-text(s, .68, 5.82, 8.8, 1.05, "\n".join(identity_lines), 12, "C9D8DF")
-for xx, yy, lab, col in [(9.4, 1.55, "h₁", TEAL), (10.85, 2.75, "h₂", TEAL), (9.4, 3.95, "h₃", TEAL)]:
-    circle(s, xx, yy, 1, col, lab, 28)
-line(s, 10.4, 2.05, 11.45, 5.6, MINT, 2)
-line(s, 11.35, 3.75, 11.45, 5.6, MINT, 2)
-line(s, 10.4, 4.45, 11.45, 5.6, MINT, 2)
-circle(s, 10.83, 5.3, 1.25, ORANGE, "H", 34)
-note(s, "Mở đầu: Một cây quyết định có thể thay đổi đáng kể khi dữ liệu huấn luyện thay đổi. Ensemble Learning kết hợp nhiều mô hình để giảm tác động của những sai lệch riêng. Bài này giới thiệu các họ phương pháp, sau đó đi sâu vào bootstrap và hard voting qua Bagging tự triển khai. Mã cây cơ sở dùng scikit-learn; phần lấy mẫu và tổng hợp phiếu do nhóm tự viết. Thông tin thành viên và giảng viên được lấy thống nhất từ report/group_info.json. Gợi ý thời lượng phần chính khoảng 15–20 phút; hai trang cuối là phụ lục.")
+def stat(s, x, y, value, title, detail="", color=TEAL, w=3.7):
+    txt(s, x, y, w, .85, value, 45, color, True)
+    txt(s, x, y + .95, w, .5, title, 19, INK, True)
+    if detail: txt(s, x, y + 1.6, w, .8, detail, 16, GRAY)
 
-# 02 — road map / thesis
-s = slide("Nhiều mô hình chỉ hữu ích khi có sự đa dạng", "01 • Ý tưởng", source="[1], [2], [3]")
-text(s, .65, 1.95, 5.8, 1.4, "Một mô hình có thể sai.\nMột tập mô hình có thể bù lỗi cho nhau.", 28, INK, True)
-text(s, .65, 3.75, 5.3, 1.25, "Điều kiện: mô hình cơ sở đủ tốt\nvà lỗi không hoàn toàn giống nhau.", 20, GRAY)
-for yy, lab, vote in [(2.0, "Cây 1", "Ác tính"), (3.2, "Cây 2", "Lành tính"), (4.4, "Cây 3", "Ác tính")]:
-    rect(s, 7, yy, 2.1, .8, WHITE, radius=True)
-    text(s, 7.15, yy+.2, 1.8, .4, lab, 19, INK, True)
-    arrow(s, 9.25, yy+.27)
-    text(s, 9.85, yy+.15, 2.5, .5, vote, 21, TEAL if vote == "Ác tính" else GRAY, True)
-rect(s, .65, 5.85, 11.95, .72, NAVY, radius=True)
-text(s, .9, 6.02, 11.5, .4, "Lộ trình: Nguyên lý  →  Ví dụ từng bước  →  Mã nguồn  →  Thực nghiệm", 19, WHITE)
-note(s, "Ba phiếu trên trang chỉ minh họa ý tưởng, không phải dự đoán thật của chương trình. Nếu các cây cùng mắc một lỗi thì thêm cây không giải quyết được vấn đề. Hai yếu tố cần cân bằng là chất lượng mô hình cơ sở và tính đa dạng của chúng. Chúng ta sẽ lần lượt trả lời: ensemble kết hợp như thế nào; bootstrap tạo đa dạng ra sao; mã thực hiện phần nào; và kết quả trên dữ liệu độc lập có cải thiện hay không.")
 
-# 03 — taxonomy
-s = slide("Bốn cách kết hợp thường gặp", "01 • Bản đồ phương pháp", source="[3]")
-items = [
-    ("BAGGING", "Song song", "Nhiều mẫu bootstrap\n→ nhiều mô hình\n→ tổng hợp dự đoán", "Ví dụ: Bagged Trees"),
-    ("BOOSTING", "Tuần tự", "Mô hình sau tập trung\nvào sai sót / phần dư\ncủa mô hình trước", "Ví dụ: AdaBoost, GBM"),
-    ("VOTING", "Quy tắc kết hợp", "Kết hợp nhãn dự đoán\nhoặc xác suất lớp\ncủa nhiều mô hình", "Hard / Soft Voting"),
-    ("STACKING", "Học cách kết hợp", "Dự đoán ngoài fold\n→ tạo đặc trưng mới\n→ mô hình tầng hai", "Meta-model"),
-]
-for i, (name, sub, body, example) in enumerate(items):
-    x = .6 + i * 3.08
-    card(s, x, 1.95, 2.88, 4.6, name, "", TEAL if i != 1 else ORANGE)
-    tag(s, x+.24, 3.15, sub, TEAL if i != 1 else ORANGE, 2.35)
-    text(s, x+.25, 3.85, 2.38, 1.6, body, 18, GRAY)
-    text(s, x+.25, 5.75, 2.4, .55, example, 13, TEAL, True)
-note(s, "Đây là các hướng tiếp cận phổ biến, không phải bốn nhóm tách rời tuyệt đối: Bagging cũng cần một quy tắc tổng hợp như voting. Bagging tạo đa dạng bằng lấy mẫu; Boosting xây dãy mô hình để xử lý sai sót; Voting có thể kết hợp các mô hình khác loại; Stacking học bộ kết hợp từ dự đoán ngoài mẫu. Trọng tâm triển khai của bài là Bagging, nhưng cần hiểu vị trí của nó trong toàn bộ Ensemble Learning. Random Forest là một mở rộng của ý tưởng Bagging cây với ngẫu nhiên hóa đặc trưng.")
+def code(s, x, y, w, value, h=4.45):
+    panel(s, x, y, w, h, NAVY)
+    label(s, x + .28, y + .22, "PYTHON · TRÍCH LƯỢC", MINT)
+    txt(s, x + .28, y + .79, w - .56, h - .93, value, 17.3, WHITE, font=MONO, leading=1.22)
 
-# 04 — variance
-s = slide("Vì sao Bagging có thể ổn định hơn?", "01 • Cơ sở lý thuyết", True, "[1], [2]")
-card(s, .65, 1.95, 5.8, 3.85, "MỘT CÂY DỄ DAO ĐỘNG", "Đổi một phần dữ liệu train\n→ ngưỡng chia có thể đổi\n→ dự đoán có thể đổi.\n\nĐó là trực giác về phương sai.", MINT, dark=True)
-card(s, 6.7, 1.95, 5.95, 3.85, "NHIỀU CÂY BÙ LỖI", "Bootstrap tạo nhiều tập train.\nMỗi cây học hơi khác nhau.\nVoting giảm ảnh hưởng của\nmột dự đoán riêng lẻ.\n\nCùng sai thì vẫn có thể sai.", ORANGE, dark=True)
-text(s, .7, 6.05, 11.9, .45, "Chìa khóa: cây đủ tốt + lỗi không quá giống nhau; thêm cây không bảo đảm tốt hơn.", 19, MINT, True)
-note(s, "Phần chính chỉ cần hiểu rằng cây quyết định có thể thay đổi khi dữ liệu train đổi; lấy nhiều bootstrap và tổng hợp giúp giảm dao động khi các cây không mắc lỗi quá giống nhau. Công thức bổ sung nếu được hỏi: Var(trung bình) = σ²[ρ + (1−ρ)/B], với B là số mô hình, σ² là phương sai chung, ρ là tương quan cặp chung. Với B=51, ρ=0,2 cho khoảng 0,216σ²; ρ=0,8 cho khoảng 0,804σ². Công thức áp dụng cho trung bình dự đoán số dưới các giả thiết trên, không phải công thức trực tiếp của lỗi hard voting. Không cần chứng minh công thức trong phần thuyết trình chính và không kết luận ensemble luôn tốt hơn.")
 
-# 05 — voting
-s = slide("Hard Voting và Soft Voting có thể cho kết quả khác", "01 • Quy tắc kết hợp", source="[3]")
-table(s, .65, 1.9, [3.15, 2.55, 2.55, 3.75], .73, [
-    ["Quan sát x", "Mô hình 1", "Mô hình 2", "Mô hình 3"],
-    ["P(ác tính | x)", "0,51", "0,51", "0,01"],
-    ["Nhãn dự đoán", "Ác tính", "Ác tính", "Lành tính"],
-], font_size=18)
-card(s, .65, 4.4, 5.8, 2.1, "HARD → ÁC TÍNH", "Đếm nhãn: 2 phiếu ác tính / 3 phiếu.")
-card(s, 6.65, 4.4, 6, 2.1, "SOFT → LÀNH TÍNH", "Trung bình P(ác tính) = 1,03 / 3 ≈ 0,343.", ORANGE)
-note(s, "Đây là ví dụ tính tay giả định. Hard voting chỉ dùng nhãn cuối cùng, nên hai trong ba mô hình chọn ác tính thì cả tổ hợp chọn ác tính. Soft voting lấy trung bình xác suất: 0,51 cộng 0,51 cộng 0,01 bằng 1,03; chia ba xấp xỉ 0,343. Xác suất lành tính trung bình khi đó xấp xỉ 0,657, nên chọn lành tính. Với trọng số, thay trung bình đều bằng tổng có trọng số chuẩn hóa. Soft voting cần xác suất đáng tin cậy; không tự động tốt hơn hard voting. Trong mã, ManualBagging dùng hard voting; sklearn Random Forest dùng trung bình xác suất.")
+def count_chart(s, summary):
+    data = CategoryChartData()
+    data.categories = [str(row["n_estimators"]) for row in summary]
+    data.add_series("Balanced accuracy CV", [100 * row["balanced_accuracy_mean"] for row in summary])
+    chart = s.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Inches(.7), Inches(2.05), Inches(7.5), Inches(3.6), data).chart
+    chart.has_legend = False
+    chart.has_title = False
+    chart.chart_style = 2
+    chart.value_axis.minimum_scale = 90; chart.value_axis.maximum_scale = 98
+    chart.value_axis.major_unit = 2
+    chart.value_axis.tick_labels.font.name = FONT; chart.value_axis.tick_labels.font.size = Pt(13)
+    chart.category_axis.tick_labels.font.name = FONT; chart.category_axis.tick_labels.font.size = Pt(14)
+    chart.value_axis.has_major_gridlines = True
+    chart.value_axis.major_gridlines.format.line.color.rgb = rgb(LINE)
+    series = chart.series[0]
+    series.format.line.color.rgb = rgb(TEAL); series.format.line.width = Pt(2.3)
+    series.marker.size = 8
+    series.marker.style = XL_MARKER_STYLE.CIRCLE
+    series.marker.format.fill.solid(); series.marker.format.fill.fore_color.rgb = rgb(TEAL)
+    series.marker.format.line.color.rgb = rgb(WHITE)
+    series.has_data_labels = True
+    labels = series.data_labels
+    labels.position = XL_LABEL_POSITION.ABOVE; labels.number_format = '0.00'
+    labels.show_value = True
+    labels.font.name = FONT; labels.font.size = Pt(14); labels.font.color.rgb = rgb(TEAL)
+    for point, row in zip(series.points, summary):
+        p = point.data_label.text_frame.paragraphs[0]
+        p.text = num(100 * row["balanced_accuracy_mean"])
+        p.font.name = FONT; p.font.size = Pt(14); p.font.color.rgb = rgb(TEAL)
+    return chart
 
-# 06 — bagging pipeline
-s = slide("Bagging: lấy mẫu lại, học độc lập, rồi tổng hợp", "02 • Quy trình", source="[1], [3]")
-steps = [
-    ("01", "Tập train", "N quan sát\nGiữ riêng test"),
-    ("02", "Bootstrap", "B mẫu; mỗi mẫu\nN lượt có hoàn lại"),
-    ("03", "Huấn luyện", "Một cây / mẫu\nĐộc lập với nhau"),
-    ("04", "Tổng hợp", "Phiếu từng cây\n→ lớp đa số"),
-]
-for i, (num, title_, body) in enumerate(steps):
-    x = .65 + i*3.09
-    rect(s, x, 2.15, 2.75, 3.35, WHITE, radius=True)
-    circle(s, x+.25, 2.42, .64, TEAL, num, 17)
-    text(s, x+.25, 3.38, 2.25, .55, title_, 23, INK, True)
-    text(s, x+.25, 4.17, 2.25, 1.0, body, 18, GRAY)
-    if i<3:
-        arrow(s, x+2.79, 3.5, .25, .22)
-text(s, .7, 6.05, 11.8, .5, "Seed 42: N = 426 mẫu train  •  B = 51 cây  •  max_depth = 3", 22, TEAL, True)
-note(s, "Bagging là viết tắt của bootstrap aggregating. Mỗi cây nhận 426 lượt lấy mẫu từ 426 mẫu train; một quan sát có thể lặp lại nhiều lần, một số quan sát không xuất hiện. Không chia train thành 51 tập rời nhau. Các cây có thể học song song về mặt thuật toán; bản mã minh họa đang huấn luyện tuần tự để đơn giản và tiết kiệm tài nguyên. Test hoàn toàn không tham gia bootstrap. Sau huấn luyện, gửi cùng một quan sát mới qua tất cả các cây rồi đếm phiếu. Bằng cách thay đổi mẫu, các cây có thể học những ranh giới quyết định khác nhau.")
 
-# 07 — bootstrap worked
-s = slide("Ví dụ bootstrap: 5 quan sát, 5 lượt lấy mẫu", "02 • Tính từng bước", source="Dữ liệu giả lập • examples/toy_bagging.py • Bootstrap: [1]")
-text(s, .65, 1.85, 11.8, .5, "Cùng 5 mẫu có x = [1, 2, 3, 4, 5]. Lấy mẫu theo chỉ số đếm từ 0.", 19, GRAY)
-table(s, .65, 2.65, [1.6, 5.5, 2.25], .8, [
-    ["Cây", "Chỉ số bootstrap", "Không có mặt"],
-    *[[f"h{index + 1}", str(tree["bootstrap_indices"]), ", ".join(map(str, tree["omitted_indices"]))]
-      for index, tree in enumerate(TOY["trees"])],
-], font_size=19)
-rect(s, 10.3, 2.65, 2.35, 3.18, TEAL, radius=True)
-text(s, 10.53, 2.95, 1.9, .5, "CÓ LẶP", 23, WHITE, True)
-text(s, 10.53, 3.85, 1.9, 1.5, "Cùng N lượt,\nnhưng không đủ\nN mẫu khác nhau.", 17, WHITE)
-text(s, .7, 6.15, 12, .5, "P(một mẫu không được chọn) = (1 − 1/N)ᴺ  →  e⁻¹ ≈ 36,8% khi N lớn", 19, TEAL, True)
-note(s, "Ba trang 7–9 dùng xuyên suốt cùng một ví dụ giả lập: x=[1,2,3,4,5], nhãn=[lành,lành,ác,ác,ác]. Ba bootstrap được chọn cố định để nhìn rõ sự khác nhau giữa cây; trong Bagging thực nghiệm, chúng được lấy ngẫu nhiên. Chỉ số 0 xuất hiện hai lần trong mẫu h1; chỉ số 3 vắng ở h1, chỉ số 2 vắng ở h2, chỉ số 0 vắng ở h3. Các mẫu vắng được gọi là OOB đối với cây tương ứng. Chạy python examples/toy_bagging.py --output-dir outputs/toy để tái lập toàn bộ bảng, ngưỡng và phiếu. Với N=5, xác suất một mẫu vắng là (4/5)^5=32,768%; khi N lớn mới gần 36,8%. Các bản bootstrap cụ thể được chọn để dạy cơ chế, không dùng làm thực nghiệm đánh giá hiệu năng.")
+# 01 — Institutional cover with a restrained, editable ensemble diagram.
+s = slide("", "Báo cáo giữa kỳ · Nhập môn học máy")
+s.shapes.add_picture(str(ROOT / "presentation/assets/tdtu_logo.png"), Inches(.63), Inches(.86), width=Inches(1.3))
+txt(s, 2.2, .98, 8.8, .65, "TRƯỜNG ĐẠI HỌC TÔN ĐỨC THẮNG\nKHOA CÔNG NGHỆ THÔNG TIN", 12, GRAY, True)
+txt(s, .62, 2.0, 7.2, 1.7, "ENSEMBLE\nLEARNING", 48, NAVY, True, leading=1.0)
+txt(s, .67, 4.02, 7.15, .9, "Bagging cây quyết định\ntrong phân loại u vú", 25, TEAL)
+identities = [f"{m['name']}  ·  {m['student_id']}" for m in G["members"]]
+identities.append("Giảng viên: " + G["lecturer"])
+txt(s, .67, 5.61, 7.5, .95, "\n".join(identities), 13.5, GRAY, leading=1.35)
+panel(s, 8.32, 2.02, 4.38, 4.66, NAVY)
+label(s, 8.65, 2.4, "BOOTSTRAP → VOTING", MINT)
+for yy, lab in [(3.02, "Cây 1"), (3.96, "Cây 2"), (4.90, "Cây B")]:
+    panel(s, 8.67, yy, 1.45, .64, "27465F")
+    txt(s, 8.82, yy + .16, 1.15, .32, lab, 17, WHITE)
+    rule(s, 10.14, yy + .32, 11.08, 4.28, "5CAAA7", 1.5)
+shape(s, 10.82, 3.79, 1.32, 1.0, TEAL, kind=MSO_SHAPE.ROUNDED_RECTANGLE)
+txt(s, 10.91, 4.05, 1.14, .45, "H(x)", 25, WHITE, True, PP_ALIGN.CENTER)
+txt(s, 8.67, 6.0, 3.55, .35, "Nhiều cây · Một dự đoán", 15, MINT)
+note(s, "Mở đầu bằng câu hỏi: khi một cây quyết định nhạy với dữ liệu, kết hợp nhiều cây có giúp cải thiện dự đoán không? Báo cáo tập trung vào Bagging. Nhóm tự triển khai bootstrap, hard voting và OOB; cây cơ sở dùng scikit-learn. Sơ đồ trên bìa minh họa cơ chế kết hợp, không biểu diễn những cây đã học cụ thể. Bộ slide gồm 24 trang chính và 4 trang dự phòng cho hỏi đáp. Thời lượng luyện tập gợi ý là 18–22 phút, không phải quy định của đề bài.")
 
-# 08 — tree math
-s = slide("Một cây học phép chia như thế nào?", "02 • Ví dụ tính Gini", source="Ví dụ tính tay; cây quyết định: [5]")
-table(s, .65, 1.95, [2.5, 1.8, 1.8, 1.8, 1.8, 2.2], .68, [
-    ["Dữ liệu minh họa", "0", "1", "2", "3", "4"],
-    ["Đặc trưng x", *map(vn_number, TOY["dataset"]["feature_values"])],
-    ["Nhãn", *["Ác" if label == 0 else "Lành" for label in TOY["dataset"]["labels"]]],
-], font_size=17)
-first_tree = TOY["trees"][0]
-text(s, .7, 4.18, 5.4, .75, f"Bootstrap h₁: {first_tree['bootstrap_indices']}\n→ 3 lành tính, 2 ác tính", 21, INK, True)
-text(s, .7, 5.25, 5.4, 1.0, f"Gini trước chia\n= 1 − (3/5)² − (2/5)² = {vn_number(first_tree['gini_before'])}", 21, TEAL, True)
-rect(s, 6.65, 4.15, 5.95, 2.4, WHITE, radius=True)
-text(s, 6.9, 4.35, 5.4, .6, f"Chọn ngưỡng x ≤ {vn_number(first_tree['threshold'])}", 24, INK, True)
-text(s, 6.9, 5.05, 5.35, 1.05, "Trái: 3 lành  →  Gini = 0\nPhải: 2 ác  →  Gini = 0\nGini sau chia = 0  |  Giảm = 0,48", 19, GRAY)
-note(s, "Đây vẫn là dữ liệu giả lập từ slide 7, không phải quan sát Breast Cancer. Cây h1 nhận (1,lành),(1,lành),(3,ác),(5,ác),(2,lành), nên Gini=1−(3/5)^2−(2/5)^2=0,48. Ngưỡng 2,5 là trung điểm giữa 2 và 3: trái có ba mẫu lành, phải có hai mẫu ác; Gini sau chia=(3/5)×0+(2/5)×0=0. Mức giảm 0,48. Vì Gini không âm, đây là phép chia tối ưu của nút. h2 thiếu x=3 nên ranh giới giữa x=2 và x=4 là 3; h3 có ranh giới 2,5. Mỗi cây ví dụ chỉ sâu một mức; mô hình thật được chọn max_depth bằng CV. Mã ví dụ dùng sklearn tính ngưỡng rồi xuất JSON để đối chiếu phép tính tay.")
-
-# 09 — aggregation formula
-s = slide("Cùng một mẫu mới, ba cây cho hai phía phiếu", "02 • Tính phép tổng hợp", source="Cùng ví dụ slide 7–8 • Số liệu tính bởi examples/toy_bagging.py")
-query_x = TOY["query"]["x"]
-text(s, .7, 1.85, 11.9, .5, f"Mẫu mới x = {vn_number(query_x)}. Mỗi cây: x ≤ ngưỡng → lành; x > ngưỡng → ác.", 20, GRAY)
-toy_rows = [["Cây", "Ngưỡng học được", f"So sánh x = {vn_number(query_x)}", "Phiếu"]]
-for index, tree in enumerate(TOY["trees"]):
-    threshold = tree["threshold"]
-    relation = "≤" if query_x <= threshold else ">"
-    toy_rows.append([f"h{index + 1}", vn_number(threshold),
-                     f"{vn_number(query_x)} {relation} {vn_number(threshold)}",
-                     "Ác tính (0)" if tree["query_prediction"] == 0 else "Lành tính (1)"])
-table(s, .65, 2.65, [1.4, 3.6, 3.6, 3.4], .73, toy_rows, font_size=19)
-rect(s, .65, 5.85, 12, .65, NAVY, radius=True)
-text(s, .9, 6.0, 11.5, .4, f"{TOY['query']['vote_counts']['0']} phiếu ác : {TOY['query']['vote_counts']['1']} phiếu lành  →  chọn ác tính (0)", 22, WHITE, True, PP_ALIGN.CENTER)
-note(s, "Đây là dự đoán thật của ba cây một mức đã học từ chính ba bootstrap ở slide 7. h1 và h3 có ngưỡng 2,5 nên x=2,8 đi sang phải và nhận nhãn ác. h2 có ngưỡng 3 nên x=2,8 đi sang trái và nhận nhãn lành. Hai phiếu ác thắng một phiếu lành. Công thức H(x)=argmax_c Σ_b I[h_b(x)=c]: I là hàm chỉ thị, đếm số cây chọn từng lớp rồi lấy lớp có phiếu lớn nhất. Mẫu mới x=2,8 chưa có nhãn thật nên không kết luận dự đoán đúng hay sai; đây là dữ liệu giả lập, không phải một bệnh nhân. Tỷ lệ 2/3 cũng không phải xác suất bệnh đã hiệu chỉnh. Dùng python examples/toy_bagging.py --output-dir outputs/toy để kiểm tra. Khi hai lớp và 51 cây thì không hòa; đa lớp vẫn có thể hòa, mã chọn lớp đầu trong classes_.")
-
-# 10 — boosting
-s = slide("Boosting: học tiếp từ những sai sót trước", "03 • Mở rộng cách kết hợp", source="[3], [6] • Giới thiệu; chưa chạy thực nghiệm Boosting")
-for i, lab in enumerate(["Mô hình 1", "Tăng trọng số\nmẫu dự đoán sai", "Mô hình 2", "Tổ hợp\ncó trọng số"]):
-    x = .65 + 3.09*i
-    rect(s, x, 1.95, 2.75, 1.0, TEAL if i%2==0 else NAVY, radius=True)
-    text(s, x+.15, 2.13, 2.45, .75, lab, 19, WHITE, True, PP_ALIGN.CENTER)
-    if i<3:
-        arrow(s, x+2.8, 2.35, .24, .2)
-text(s, .7, 3.55, 5.6, .8, "Ví dụ AdaBoost nhị phân\nTăng chú ý vào mẫu bị dự đoán sai.", 21, INK, True)
-text(s, .7, 4.75, 5.6, 1.45, "Mẫu sai: tăng trọng số.\nMẫu đúng: giảm trọng số tương đối.\nMô hình sau học lại trên các trọng số mới.", 20, GRAY)
-card(s, 6.8, 3.55, 5.8, 2.95, "20% → 50%", "Trong ví dụ, nhóm mẫu sai\nđang mang 20% tổng trọng số;\nsau cập nhật mang 50%.", ORANGE)
-note(s, "Đây là tổng quan để phân biệt Boosting với Bagging; phần chính không cần đi sâu công thức. AdaBoost chưa được triển khai trong mã thực nghiệm này. Số 20%→50% là ví dụ cập nhật trọng số, không phải accuracy hay phần trăm mẫu bị thay nhãn. Nếu được hỏi phép tính: với sai số có trọng số ε=0,2, α=½ln((1−ε)/ε)=0,693; nhóm sai nhân exp(α)=2, nhóm đúng nhân exp(−α)=0,5; sau chuẩn hóa, khối lượng trọng số nhóm sai là 0,2×2/(0,2×2+0,8×0,5)=0,5. Nhãn trong cập nhật cổ điển mã hóa −1,+1. Gradient Boosting giảm loss qua chuỗi mô hình, không dùng nguyên xi quy tắc AdaBoost này. Có thể nói ngắn slide 10–11 để dành thời gian cho Bagging tự triển khai.")
-
-# 11 — stacking
-s = slide("Stacking học một mô hình để kết hợp các mô hình", "03 • Mở rộng cách kết hợp", source="[3], [7]")
-card(s, .65, 2.05, 3.5, 3.9, "TẦNG CƠ SỞ", "Cây / SVM / Logistic…\nHuấn luyện theo K fold.\nMỗi mẫu chỉ lấy dự đoán\ntừ mô hình chưa thấy nó.")
-arrow(s, 4.28, 3.8, .5, .32)
-card(s, 4.95, 2.05, 3.5, 3.9, "ĐẶC TRƯNG OOF", "Một cột / mô hình cơ sở.\nCác dự đoán ngoài fold\ntạo đầu vào cho\nmô hình tầng hai.")
-arrow(s, 8.58, 3.8, .5, .32)
-card(s, 9.25, 2.05, 3.4, 3.9, "META-MODEL", "Học cách phối hợp\ncác mô hình cơ sở.\nTest chỉ dùng để\nđánh giá cuối cùng.", ORANGE)
-text(s, .7, 6.25, 11.9, .45, "Tránh rò rỉ: không huấn luyện tầng hai bằng dự đoán in-sample của tầng cơ sở.", 19, TEAL, True)
-note(s, "OOF nghĩa là out-of-fold. Chia train thành K fold. Với mỗi mô hình cơ sở, huấn luyện trên K trừ một fold và dự đoán fold còn lại; ghép các dự đoán để mỗi mẫu train có một dự đoán từ mô hình chưa thấy nó. Các cột OOF này, cùng nhãn train, huấn luyện meta-model. Khi dự đoán dữ liệu mới, mô hình cơ sở được huấn luyện lại trên toàn train, tạo đầu vào cho meta-model đã học. Nếu dùng dự đoán in-sample quá tốt để học meta-model thì tầng hai có thể học một tín hiệu không phản ánh khả năng tổng quát. Stacking ở đây là nội dung lý thuyết mở rộng, chưa chạy thực nghiệm.")
-
-# 12 — data
-s = slide("Bài toán: phân loại mẫu khối u vú", "04 • Ứng dụng minh họa", source="[4] • Breast Cancer Wisconsin Diagnostic")
-for xx, num, label in [(.65,"569","quan sát"),(3.7,"30","đặc trưng số"),(6.75,"212","ác tính (nhãn 0)"),(9.8,"357","lành tính (nhãn 1)")]:
-    text(s, xx, 1.95, 2.8, 1.1, num, 48, TEAL, True)
-    text(s, xx, 3.05, 2.8, .7, label, 18, GRAY)
-rect(s, .65, 4.15, 5.8, 1.9, WHITE, radius=True)
-text(s, .9, 4.4, 5.3, .45, "ĐẦU VÀO", 15, TEAL, True)
-text(s, .9, 5.0, 5.15, .75, "Đặc trưng nhân tế bào: radius,\ntexture, perimeter, area…", 20, INK)
-arrow(s, 6.55, 4.9, .45, .3)
-rect(s, 7.15, 4.15, 5.45, 1.9, NAVY, radius=True)
-text(s, 7.4, 4.4, 4.9, .45, "ĐẦU RA", 15, MINT, True)
-text(s, 7.4, 5.0, 4.9, .75, "Dự đoán ác tính hoặc lành tính\ncho một quan sát mới.", 20, WHITE)
-text(s, .7, 6.45, 11.9, .35, "Mục đích học thuật; chưa xác thực lâm sàng. Dữ liệu có sẵn trong scikit-learn.", 14, GRAY)
-note(s, "Dữ liệu Breast Cancer Wisconsin Diagnostic có 569 quan sát và 30 đặc trưng số trích từ ảnh nhân tế bào. Hai nhãn của thư viện là 0 cho malignant, tức ác tính, và 1 cho benign, tức lành tính. Tổng thể có 212 mẫu ác tính và 357 mẫu lành tính. Bài không huấn luyện trực tiếp từ ảnh; đầu vào là bộ đặc trưng đã được chuẩn bị. Các cây không yêu cầu chuẩn hóa thang đo như một số phương pháp khoảng cách. Đây là minh họa học thuật, không phải một hệ thống chẩn đoán đã được xác thực.")
-
-# 13 — design
-s = slide("Thiết kế thí nghiệm giữ test ngoài quá trình chọn độ sâu", "04 • Quy trình đánh giá", source="Nguồn: outputs/results.json • seed = 42")
-rect(s, .65, 1.95, 8.75, .75, TEAL, radius=True)
-rect(s, 9.55, 1.95, 3.05, .75, NAVY, radius=True)
-text(s, .9, 2.13, 8.2, .4, "TRAIN 75% • 426 mẫu (159 ác / 267 lành)", 19, WHITE, True)
-text(s, 9.75, 2.13, 2.6, .4, "TEST • 143 mẫu", 17, WHITE, True)
-text(s, .7, 3.15, 6.3, .5, "CV phân tầng 5 fold trên train", 23, INK, True)
-for i, (d, score) in enumerate(RESULT["depth_selection_train_cv_balanced_accuracy"].items()):
-    x = .85+i*1.18
-    h = (score-.90)*40
-    rect(s, x, 5.7-h, .7, h, TEAL if d=="3" else "B7CFC7", radius=True)
-    text(s, x-.15, 5.8, 1.0, .4, d, 18, INK, True, PP_ALIGN.CENTER)
-    text(s, x-.2, 5.3-h, 1.15, .4, f"{100*score:.2f}%".replace(".",","), 13, TEAL if d=="3" else GRAY, True, PP_ALIGN.CENTER)
-text(s, .75, 6.35, 6.15, .4, "Trục độ sâu 2–6; cột hiển thị phần vượt 90% CV.", 12, GRAY)
-card(s, 7.35, 3.1, 5.25, 3.55, "CHỌN max_depth = 3", "Balanced accuracy CV = 93,73%.\nChọn bằng cây đơn, dùng chung\ncho cả ba mô hình.\nKhông tối ưu riêng từng ensemble.")
-note(s, "Chia dữ liệu bằng train_test_split với stratify bằng nhãn và random_state 42. Test có 53 ca ác tính và 90 ca lành tính. Trong train, thử max_depth từ 2 đến 6 bằng StratifiedKFold năm fold, chọn theo balanced accuracy trung bình. Độ sâu 3 đạt khoảng 93,73%, cao nhất trong các ứng viên. Biểu đồ cột chỉ thể hiện phần vượt 90% để nhìn khác biệt; đây không phải trục bắt đầu từ 0. Độ sâu được chọn trên cây đơn và dùng chung cho Bagging và Random Forest. Thiết kế giúp minh họa đơn giản nhưng không phải tìm cấu hình tối ưu riêng cho từng mô hình. Test chỉ được xem sau khi chốt cấu hình.")
-
-# 14 — code
-s = slide("Tự viết hai phần cốt lõi: bootstrap và voting", "05 • Triển khai Python", source="Trích lược ensemble_model.py • NumPy + scikit-learn")
-rect(s, .65, 1.95, 6.2, 4.25, NAVY, radius=True)
-rect(s, 7.05, 1.95, 5.55, 4.25, NAVY, radius=True)
-text(s, .9, 2.15, 5.7, .4, "01  LẤY MẪU & HUẤN LUYỆN", 15, MINT, True)
-code1 = "indices = rng.integers(\n    0, n_samples, size=n_samples\n)\ntree = DecisionTreeClassifier(\n    max_depth=self.max_depth,\n    random_state=...\n)\ntree.fit(X[indices], encoded[indices])\nself.estimators_.append(tree)"
-text(s, .9, 2.9, 5.75, 2.9, code1, 14, WHITE, font=MONO)
-text(s, 7.3, 2.15, 5.0, .4, "02  ĐẾM PHIẾU & CHỌN LỚP", 15, MINT, True)
-code2 = "counts = np.zeros((\n    len(X), len(self.classes_)\n), dtype=np.int64)\nrows = np.arange(len(X))\nfor tree in self.estimators_:\n    predicted = tree.predict(X).astype(int)\n    np.add.at(counts, (rows, predicted), 1)\n\nself.classes_[counts.argmax(axis=1)]"
-text(s, 7.3, 2.9, 5.0, 2.9, code2, 13.2, WHITE, font=MONO)
-text(s, .7, 6.4, 11.9, .4, "Cây cơ sở dùng thư viện; quy trình Bagging và hard voting do mã minh họa triển khai.", 18, TEAL, True)
-note(s, "Đây là mã trích lược từ ensemble_model.py để vừa slide; dấu ba chấm thay phần cấp seed riêng cho mỗi cây. de_5_ensemble_learning.py điều phối thí nghiệm và xuất báo cáo. rng.integers tạo N chỉ số trong khoảng từ 0 đến N trừ một, cho phép trùng chỉ số. encoded là nhãn đã ánh xạ sang chỉ số lớp bởi np.unique. Mỗi cây dùng các hàng X và nhãn theo cùng indices. Phần voting khởi tạo ma trận số quan sát nhân số lớp, rồi np.add.at tăng một ở ô tương ứng với từng dự đoán của từng cây. Cuối cùng argmax lấy lớp có nhiều phiếu, rồi ánh xạ về nhãn gốc. Mã kiểm tra dữ liệu, hỗ trợ nhãn không liên tiếp và tương thích clone/CV của sklearn. Không nhận phần cài cây quyết định là tự viết.")
-
-# 15 — RF exact difference
-s = slide("Bagging tự viết và Random Forest khác nhau ở đâu?", "05 • Mô hình đối chiếu", source="[2], [3] • RandomForestClassifier mặc định max_features='sqrt'")
-table(s, .65, 2.0, [3.1, 4.5, 4.4], .85, [
-    ["Thành phần", "Manual Bagging", "Random Forest (sklearn)"],
-    ["Lấy mẫu train", "Bootstrap", "Bootstrap"],
-    ["Đặc trưng khi chia", "Xét toàn bộ 30 đặc trưng", "Tập con ngẫu nhiên (√30 → 5)"],
-    ["Kết hợp cây", "Đa số nhãn dự đoán", "Trung bình xác suất lớp"],
-    ["Cấu hình seed 42", "51 cây, max_depth = 3", "51 cây, max_depth = 3"],
-], font_size=16)
-text(s, .75, 6.5, 11.8, .35, "Ngẫu nhiên hóa đặc trưng giúp giảm tương quan; không bảo đảm mọi cây sẽ có lỗi khác nhau.", 15, TEAL, True)
-note(s, "Cả hai phương pháp sử dụng bootstrap nhưng Random Forest ngẫu nhiên hóa cả việc chọn đặc trưng ở từng phép chia. Với mặc định max_features bằng sqrt và 30 đặc trưng, giá trị mục tiêu là 5. Thư viện có thể xem thêm đặc trưng để tìm phép chia hợp lệ, nên không hiểu là giới hạn cứng tuyệt đối trong mọi trường hợp. Khác biệt quan trọng nữa là quy tắc kết hợp: ManualBagging đếm nhãn cứng, RandomForestClassifier lấy trung bình xác suất của các cây rồi chọn lớp lớn nhất. Vì vậy không mô tả thí nghiệm như thể chỉ thay đổi một yếu tố đặc trưng. Đây là hai baseline để đối chiếu, không phải nghiên cứu tách riêng tác động từng thành phần.")
-
-# 16 — results
-s = slide("Bagging cải thiện nhẹ trên lần chia test này", "06 • Kết quả thực nghiệm", source="Seed 42 • test n = 143 • Nguồn: results.json • số liệu đã làm tròn")
-rows = [["Mô hình", "Accuracy", "Precision*", "Recall*", "F1*"]]
-for name, row in zip(["Cây quyết định đơn", "Bagging tự viết", "Random Forest"], RESULT["test_metrics"]):
-    rows.append([name] + [f"{row[k]*100:.2f}%".replace(".",",") for k in ["accuracy","precision_malignant","recall_malignant","f1_malignant"]])
-table(s, .65, 2.0, [4.0, 2.0, 2.0, 2.0, 2.0], .85, rows, highlight=2, font_size=18)
-text(s, .75, 5.6, 11.8, .4, "* Lớp dương: ác tính = 0. Precision, Recall và F1 đều tính cho lớp này.", 17, GRAY)
-text(s, .75, 6.25, 11.8, .45, "Accuracy tăng 0,70 điểm phần trăm; không suy ra ưu thế tổng quát từ một lần chia.", 19, TEAL, True)
-note(s, "Bảng này chỉ thuộc seed tham chiếu 42: cây đơn đạt accuracy 94,41%, Bagging và Random Forest cùng đạt 95,10%. Precision, recall và F1 lấy ác tính làm lớp dương, mặc dù mã nhãn là 0. Accuracy của Bagging tương đương đúng 136 trên 143 mẫu, cao hơn cây đơn đúng một mẫu. Mức chênh là khoảng 0,70 điểm phần trăm, không phải 0,70% cải thiện tương đối. Hai mô hình có cùng chỉ số tổng hợp không đủ để suy ra giống nhau trên mọi quan sát. Bản nâng cấp còn chạy 10 seed và sẽ báo cáo ở trang tiếp theo; không trộn điểm seed 42 với điểm trung bình nhiều split.")
-
-# Added result — repeated holdouts
-s = slide("Đánh giá lại trên 10 lần chia phân tầng", "06 • Độ ổn định", source="Nguồn: repeated_evaluation.summary • seeds 42–51 • Mean ± SD mẫu")
-text(s, .7, 1.85, 11.8, .45, "Mỗi seed: chia lại train/test → chọn depth trên train → đánh giá ba mô hình.", 20, GRAY)
-rows = [["Mô hình", "Accuracy (%)", "Recall ác (%)", "F1 ác (%)"]]
-for name, row in zip(["Cây quyết định đơn", "Bagging tự viết", "Random Forest"], RESULT["repeated_evaluation"]["summary"]):
-    values = [f"{100*row[f'{key}_mean']:.2f} ± {100*row[f'{key}_std']:.2f}".replace(".", ",")
-              for key in ["accuracy", "recall_malignant", "f1_malignant"]]
-    rows.append([name] + values)
-table(s, .65, 2.65, [4.0, 2.65, 2.65, 2.7], .75, rows, highlight=2, font_size=17)
-text(s, .75, 5.95, 11.8, .7, "Các tập test có thể giao nhau. SD mô tả độ biến thiên giữa các split,\nkhông phải khoảng tin cậy của các mẫu kiểm định độc lập.", 18, TEAL, True)
-note(s, "Đánh giá bổ sung gồm các seed cố định từ 42 đến 51, không chọn seed có điểm đẹp nhất. Trong mỗi lần chạy, ba mô hình dùng cùng một train/test phân tầng; độ sâu được chọn lại bằng CV trên train của chính seed đó, sau đó dùng chung. Mỗi test có 143 mẫu nhưng các test giữa các seed có thể giao nhau. Trung bình accuracy của cây đơn, Bagging và Random Forest lần lượt là khoảng 92,80%, 94,76% và 95,03%. SD mẫu dùng ddof bằng 1; độ biến thiên accuracy tương ứng khoảng 1,84, 1,59 và 1,85 điểm phần trăm. Đây là thống kê mô tả chứ không phải khoảng tin cậy độc lập. RF có accuracy trung bình cao hơn nhẹ, Bagging có recall ác tính trung bình cao hơn nhẹ; chưa thể coi là bằng chứng một phương pháp luôn thắng.")
-
-# Added result — OOB
-s = slide("Out-of-bag: chỉ bỏ phiếu cho mẫu cây chưa học", "06 • Kiểm tra trên train", source="Nguồn: results.json → oob • Manual Bagging, seed 42")
-oob = RESULT["oob"]
-for x, value, title_, body in [
-    (.65, f"{100*oob['accuracy']:.2f}%".replace(".", ","), "ACCURACY OOB", "401 / 426 mẫu có dự đoán đúng"),
-    (4.73, f"{100*oob['coverage']:.0f}%", "COVERAGE", "426 / 426 mẫu có ít nhất 1 phiếu"),
-    (8.81, f"{oob['min_trees_per_sample']}–{oob['max_trees_per_sample']}", "CÂY OOB / MẪU", "Số phiếu mỗi mẫu có thể khác nhau"),
-]:
-    rect(s, x, 1.95, 3.83, 2.25, WHITE, radius=True)
-    text(s, x+.25, 2.12, 3.3, .85, value, 37, TEAL, True)
-    text(s, x+.25, 3.0, 3.3, .4, title_, 15, INK, True)
-    text(s, x+.25, 3.65, 3.3, .4, body, 12, GRAY)
-rect(s, .65, 4.65, 12, 1.0, NAVY, radius=True)
-text(s, .9, 4.87, 11.5, .6, "Mẫu nằm trong bootstrap của cây  →  Không nhận phiếu OOB từ cây đó.\nMẫu không được chọn vào bootstrap →  Nhận 1 phiếu từ cây đó.", 18, WHITE)
-text(s, .75, 6.1, 11.8, .65, "Depth đã chọn bằng CV trên train. OOB sau lựa chọn này không phải điểm kiểm định\nđộc lập; test vẫn được giữ riêng cho đánh giá cuối ở mỗi seed.", 17, TEAL, True)
-note(s, "Tại seed 42, Bagging có accuracy hard-vote OOB bằng 401 chia 426, khoảng 94,13%, và coverage 100%. Mỗi mẫu nhận phiếu từ 8 đến 34 cây không thấy nó trong bootstrap, không phải cùng nhận đủ 51 phiếu. Mã tính mask không có mặt bằng bincount, rồi chỉ dự đoán các hàng đó để tích lũy phiếu OOB. Với số cây ít hơn có thể có mẫu không nhận phiếu: oob_decision_function_ đánh dấu NaN và điểm chỉ tính trên các mẫu được bao phủ. Quan trọng: độ sâu đã được chọn trên train bằng CV, nên điểm OOB tính sau đó không hoàn toàn độc lập với lựa chọn siêu tham số. OOB là chẩn đoán bổ sung, không thay thế kết quả test riêng và không phải xác suất chẩn đoán.")
-
-# 17 — confusion matrices
-s = slide("Nhìn vào ca bỏ sót, không chỉ accuracy", "06 • Phân tích lỗi", source="Seed 42 • Hàng = thật • Cột = dự đoán • Lớp dương = ác tính (0)")
-for x, label, matrix in [(1.3,"CÂY ĐƠN",[[48,5],[3,87]]),(7.3,"BAGGING",[[49,4],[3,87]])]:
-    text(s, x, 1.88, 4.4, .5, label, 22, TEAL, True, PP_ALIGN.CENTER)
-    text(s, x+.8, 2.55, 1.6, .35, "Dự đoán ác", 13, GRAY, align=PP_ALIGN.CENTER)
-    text(s, x+2.6, 2.55, 1.6, .35, "Dự đoán lành", 13, GRAY, align=PP_ALIGN.CENTER)
-    for r in range(2):
-        text(s, x-.65, 3.32+1.08*r, 1.35, .6, "Thật ác" if r==0 else "Thật lành", 13, GRAY, align=PP_ALIGN.RIGHT)
-        for c in range(2):
-            xx=x+.8+1.8*c; yy=3.05+1.08*r
-            rect(s, xx, yy, 1.7, 1.0, TEAL if r==c else ("F4DDD1" if r==0 else WHITE), radius=True)
-            text(s, xx, yy+.16, 1.7, .65, str(matrix[r][c]), 29, WHITE if r==c else RED, True, PP_ALIGN.CENTER)
-text(s, .75, 5.65, 11.8, .55, "Bỏ sót ác tính: 5/53 → 4/53  |  Recall: 90,57% → 92,45%", 25, INK, True, PP_ALIGN.CENTER)
-text(s, .75, 6.45, 11.8, .35, "Bagging vẫn bỏ sót 4 ca; chưa đủ cơ sở sử dụng cho quyết định lâm sàng.", 15, GRAY, align=PP_ALIGN.CENTER)
-note(s, "Trong ma trận này hàng là nhãn thật, cột là nhãn dự đoán; thứ tự cả hai trục là ác tính rồi lành tính. Vì ác tính là lớp dương, ô trên trái là TP, ô trên phải là FN. Cây đơn có TP 48 và FN 5; Bagging có TP 49 và FN 4. Cả hai có FP 3 và TN 87. Recall Bagging bằng 49 chia 53, khoảng 92,45%. Precision bằng 49 chia 52, khoảng 94,23%. Giảm được một ca bỏ sót trên tập test này là một quan sát thực nghiệm, chưa chứng minh lợi ích đáng tin cậy khi triển khai thực tế. Ma trận của Random Forest trùng các số đếm tổng hợp của Bagging trong lần chạy.")
-
-# 18 — actual trace
-s = slide("Phiếu bất đồng có thể dẫn đến dự đoán sai", "06 • Minh họa đầu ra", True, "Nguồn: outputs/results.json → disagreement_example • Seed 42")
-text(s, .7, 1.85, 11.8, .5, "Vị trí test 2  •  Hàng dữ liệu gốc 291  •  Nhãn thật: lành tính", 22, WHITE, True)
-rect(s, .7, 2.75, 7.1, 2.8, "1C384B", radius=True)
-text(s, .95, 3.0, 6.6, .4, "Mẫu bất đồng đầu tiên theo thứ tự test", 19, MINT, True)
-text(s, .95, 3.8, 6.55, 1.0, "27 cây chọn ác tính\n24 cây chọn lành tính", 25, WHITE, True)
-text(s, .95, 4.95, 6.55, .4, "45 / 143 mẫu test có phiếu chia hai phía.", 17, "C9D8DF")
-text(s, 8.7, 2.75, 3.3, .65, "TỔNG 51 CÂY", 20, MINT, True)
-text(s, 8.7, 3.55, 3.8, .9, "27 : 24", 45, WHITE, True)
-text(s, 8.7, 4.6, 3.5, .55, "Ác tính : Lành tính", 18, "C9D8DF")
-text(s, .75, 6.15, 11.8, .5, "Đa số chọn ác tính → Sai: nhãn thật là lành tính. Tỷ lệ phiếu không phải xác suất bệnh.", 19, MINT, True)
-note(s, "Đây là trace thật của seed 42, không phải ví dụ giả định. Chương trình chọn mẫu test đầu tiên có phiếu chia hai phía, không chọn theo việc dự đoán đúng. Mẫu ở vị trí test 2 ứng với hàng 291 trong dữ liệu gốc; các chỉ số đều đếm từ 0, không phải mã bệnh nhân. Có 27 phiếu ác tính và 24 phiếu lành tính, nên hard voting chọn ác tính. Nhãn thật là lành tính, do đó đây là một dương tính giả. Có tổng 45 trong 143 mẫu test có bất đồng giữa cây. Tỷ lệ 27 trên 51 là tỷ lệ hard-vote, không phải xác suất bệnh đã hiệu chỉnh. Ví dụ cũ của quan sát test đầu tiên vẫn lưu trong worked_example: 0 phiếu ác và 51 phiếu lành, dự đoán đúng. Hai ví dụ cho thấy đồng thuận hoặc bất đồng đều phải kiểm tra bằng nhãn thật.")
-
-# 19 — limitations
-s = slide("Kết quả có ích, nhưng phạm vi kết luận còn hẹp", "07 • Nhận xét và hướng phát triển", source="Phân tích từ thiết kế thí nghiệm hiện tại")
-card(s, .65, 1.95, 3.85, 4.6, "ĐÃ KIỂM CHỨNG", "Bootstrap và hard voting.\n10 seed, mean và SD mẫu.\nOOB kèm coverage.\nTest riêng ở mỗi seed.\nVí dụ bất đồng và lỗi.")
-card(s, 4.75, 1.95, 3.85, 4.6, "GIỚI HẠN", "Các holdout giao nhau.\nChọn depth bằng cây đơn.\nOOB sau chọn depth.\nChưa kiểm định trên\nquần thể độc lập.", ORANGE)
-card(s, 8.85, 1.95, 3.8, 4.6, "PHÁT TRIỂN", "Tuning riêng bằng CV.\nKiểm định dữ liệu ngoài.\nSo sánh AdaBoost, GBM.\nĐánh giá đánh đổi lỗi.\nKhảo sát số cây bằng CV.")
-note(s, "Bản nâng cấp đã chạy 10 seed và báo cáo SD mẫu, nhưng các test có thể giao nhau nên chúng không phải mười tập kiểm định độc lập. Thiết kế chọn độ sâu bằng cây đơn có thể không phải tốt nhất cho Bagging hay Random Forest. OOB là đánh giá phụ vì depth đã chọn trên train trước đó. Nếu tuning riêng hoặc khảo sát số cây, phải dùng train/CV và giữ test ngoài lựa chọn cấu hình. Boosting và Stacking vẫn mới được giải thích lý thuyết, chưa phải mô hình đã đo trong bảng kết quả. Chưa có kiểm định ngoài trên quần thể độc lập; ứng dụng y tế cần dữ liệu và quy trình xác thực phù hợp hơn nhiều.")
-
-# 20 — demo
-s = slide("Demo: hiểu cơ chế trước, xem kết quả sau", "07 • Trình diễn mã", source="Ví dụ tính tay → mô hình trên dữ liệu Breast Cancer")
-rect(s, .65, 1.95, 12, 1.3, NAVY, radius=True)
-text(s, .95, 2.22, 11.4, .8, "python examples/toy_bagging.py --output-dir outputs/toy\npython de_5_ensemble_learning.py --repeats 1 --output-dir outputs/quick", 16, MINT, font=MONO)
-for i, (title_, body) in enumerate([
-    ("Kết quả đầy đủ", "results.json, report.md\nCấu hình, OOB và diễn giải."),
-    ("Độ ổn định", "summary_metrics.csv\nstability.png: mean và SD."),
-    ("Phân tích lỗi", "confusion_matrices.png\nvoting_example.png: phiếu."),
+# 02 — Three research questions rather than a long agenda.
+s = slide("Ba câu hỏi dẫn dắt báo cáo", "01 / Câu hỏi nghiên cứu", "Báo cáo · mục 1.2", dark=True)
+for i, (title, body_) in enumerate([
+    ("Có cải thiện không?", "Bagging so với một cây đơn\ntrên cùng các lần chia dữ liệu."),
+    ("Bao nhiêu cây là đủ?", "Khảo sát số cây trên train;\nxem lợi ích có tiếp tục tăng."),
+    ("Khác nhau thế nào là tốt?", "Tách ảnh hưởng của đặc trưng\nvà cách tổng hợp dự đoán."),
 ]):
-    card(s, .65+i*4.08, 3.8, 3.83, 2.55, title_, body)
-text(s, .7, 6.55, 11.8, .3, "Cài dependencies theo README trước khi chạy. Không cần tải dữ liệu hoặc khóa API.", 13, GRAY)
-note(s, "Mở terminal tại thư mục kho, dùng Python đã cài requirements.txt; trong cloud có thể thay python bằng .venv/bin/python. Chạy ví dụ nhỏ trước để thấy ba ngưỡng 2,5;3;2,5 và hai phiếu ác thắng một phiếu lành ở x=2,8. Sau đó chạy mô hình thật với --repeats 1 --output-dir outputs/quick. Demo một seed không tạo SD bằng 0; SD không xác định nên lưu null. Lệnh python de_5_ensemble_learning.py không có tham số chạy đủ 10 seed 42–51 vào outputs/. results.json lưu cấu hình, OOB, trace và số liệu; report.md giải thích thí nghiệm. Báo cáo bài viết hoàn chỉnh nằm ở report/Bao_cao_De_5_Ensemble_Learning.docx và PDF cùng tên, khác PDF slide ở thư mục gốc. Mỗi lần chạy thay thế các tệp cùng tên trong output-dir; thư mục quick giữ riêng demo. Các bảng nhiều seed trên slide lấy từ chạy đầy đủ, không suy từ demo một seed. Chuẩn bị sẵn output làm phương án dự phòng nếu buổi trình bày không chạy được máy.")
+    x = .66 + 4.1 * i
+    label(s, x, 2.27, f"0{i + 1}", MINT)
+    txt(s, x, 2.93, 3.8, .95, title, 26, WHITE, True)
+    txt(s, x, 4.13, 3.7, 1.2, body_, 20, "C5D6E1")
+takeaway(s, "Mạch trình bày: cơ chế → ví dụ → triển khai → bằng chứng thực nghiệm.", True)
+note(s, "Ba câu hỏi dẫn dắt toàn bộ phần thực nghiệm: Bagging cải thiện so với cây đơn đến mức nào; tăng số cây có tiếp tục có lợi; và đa dạng hơn có luôn tạo tổ hợp tốt hơn? Các mô hình được so sánh trong cùng lần chia để giữ chung điều kiện train/test. Khảo sát số cây và đối chứng được thực hiện bổ sung sau thí nghiệm gốc, chưa phải nghiên cứu xác nhận được thiết kế trước. Bagging và Random Forest là những phương pháp đã công bố, không phải phương pháp mới do nhóm đề xuất.")
 
-# 21 — closing
-s = slide("Ba điều cần nhớ", "08 • Kết luận", True, "Kết luận trong phạm vi thí nghiệm hiện tại")
-for yy, num, title_, body in [
-    (1.95,"1","Đa dạng trước, tổng hợp sau","Nhiều mô hình giống nhau không tự tạo ra một tổ hợp tốt."),
-    (3.45,"2","Bagging = Bootstrap + Aggregating","Mẫu có hoàn lại tạo các cây khác nhau; voting kết hợp dự đoán."),
-    (4.95,"3","Đọc lỗi cụ thể, giữ kết luận có giới hạn","Bagging đạt 95,10% accuracy và bỏ sót 4/53 ca ác tính trên test này."),
+# 03 — Landscape; the scope is explicit.
+s = slide("Bagging trong bức tranh học tổ hợp", "01 / Cơ sở lý thuyết", "[1], [2], [3], [6], [7]")
+for i, (title, desc, end) in enumerate([
+    ("Bagging", "Đổi mẫu train\nHọc các cây độc lập\nTổng hợp dự đoán", "TRỌNG TÂM TRIỂN KHAI"),
+    ("Boosting", "Học tuần tự\nXử lý sai sót hoặc\ngiảm hàm mất mát", "AdaBoost / Gradient Boosting"),
+    ("Voting", "Kết hợp đầu ra\nĐa số nhãn hoặc\ntrung bình xác suất", "Hard / Soft"),
+    ("Stacking", "Dự đoán ngoài fold\nTạo đầu vào cho\nmô hình tầng hai", "Meta-model"),
+]):
+    x = .62 + i * 3.08
+    panel(s, x, 2.14, 2.84, 3.67, PALE if i == 0 else BG)
+    shape(s, x + .22, 2.48, .38, .05, TEAL if i == 0 else BLUE)
+    txt(s, x + .22, 2.83, 2.4, .5, title, 26, NAVY, True)
+    txt(s, x + .22, 3.68, 2.42, 1.4, desc, 18, GRAY, leading=1.3)
+    txt(s, x + .22, 5.28, 2.42, .4, end, 10.7, TEAL, True)
+takeaway(s, "Các hướng không tách rời: Bagging vẫn cần một quy tắc tổng hợp như voting.")
+note(s, "Bagging tạo nhiều mẫu bootstrap để học các mô hình cơ sở. Boosting xây dựng một chuỗi mô hình nhằm xử lý sai sót hoặc giảm hàm mất mát. Voting là quy tắc kết hợp nhãn hay xác suất; Stacking học một bộ kết hợp từ dự đoán ngoài fold. Các hướng này không hoàn toàn tách rời: Bagging cũng cần quy tắc tổng hợp. Bài chỉ thực nghiệm sâu Bagging và Random Forest. Boosting, Stacking được giới thiệu tổng quan; chi tiết minh họa nằm ở slide dự phòng 27.")
+
+# 04 — Bagging flow.
+s = slide("Bagging = Bootstrap + Aggregating", "02 / Cơ chế", "[1], [3] · ensemble_model.py")
+for i, (title, body_) in enumerate([
+    ("Giữ riêng test", "Chỉ lấy mẫu\ntừ tập train."),
+    ("Tạo bootstrap", "N lượt lấy\ncó hoàn lại / cây."),
+    ("Học B cây", "Một cây học\ntrên mỗi bootstrap."),
+    ("Đếm phiếu", "Cùng một mẫu mới\n→ chọn lớp đa số."),
+]):
+    x = .62 + i * 3.1
+    label(s, x, 2.38, f"BƯỚC {i + 1}", w=2.65)
+    rule(s, x, 2.94, x + 2.65, 2.94, LINE, 2)
+    txt(s, x, 3.28, 2.72, .65, title, 24, NAVY, True)
+    txt(s, x, 4.27, 2.72, 1.15, body_, 21, GRAY)
+    if i < 3: arrow(s, x + 2.72, 3.45, .25)
+takeaway(s, "Không chia train thành B phần rời nhau. Mỗi bootstrap đều lấy từ cùng tập train.")
+note(s, "Mỗi bootstrap có N lượt lấy có hoàn lại, nên một quan sát có thể lặp hoặc không xuất hiện. Mỗi cây học trên bootstrap riêng rồi cùng dự đoán một quan sát mới. Các cây học độc lập về quy trình, không có nghĩa dự đoán của chúng độc lập thống kê. Mã minh họa huấn luyện tuần tự. Mô hình tham chiếu có N = 426, B = 51 và max_depth = 3. Số cây lẻ tránh hòa trong bài toán hai lớp; khi có nhiều lớp vẫn có thể hòa, mã chọn lớp đầu trong classes_.")
+
+# 05 — One connected toy example, starting with the data.
+s = slide("Cùng 5 quan sát, tạo 3 bootstrap khác nhau", "02 / Ví dụ tính tay", "examples/toy_bagging.py · Dữ liệu giả lập")
+label(s, .67, 1.98, "DỮ LIỆU GỐC")
+for i, (x, y) in enumerate(zip(T["dataset"]["feature_values"], T["dataset"]["labels"])):
+    xx = 3.0 + i * 1.87
+    txt(s, xx, 1.95, 1.6, .44, f"x = {int(x)}", 22, NAVY, True, PP_ALIGN.CENTER)
+    txt(s, xx, 2.48, 1.6, .35, "Lành" if y else "Ác", 17, TEAL if y else CORAL, align=PP_ALIGN.CENTER)
+rows = [["Cây", "Chỉ số bootstrap (từ 0)", "Quan sát vắng mặt"]]
+for i, tr in enumerate(T["trees"]):
+    rows.append([f"h{i + 1}", str(tr["bootstrap_indices"]), ", ".join(str(k) for k in tr["omitted_indices"])])
+table(s, .67, 3.2, [1.6, 6.5, 3.85], rows, .65, 20)
+takeaway(s, "Ví dụ h₁ lấy chỉ số 0 hai lần và không lấy chỉ số 3. Mỗi bootstrap vẫn có 5 lượt.")
+note(s, "Ví dụ gồm x = [1, 2, 3, 4, 5] và y = [1, 1, 0, 0, 0], với nhãn 1 là lành, nhãn 0 là ác. Các chỉ số hàng bắt đầu từ 0. Ba bootstrap được chọn cố định để dễ tính tay: h₁ vắng hàng 3, h₂ vắng hàng 2 và h₃ vắng hàng 0. Đây là dữ liệu giả lập, không đại diện cho một đặc trưng y tế cụ thể. Trong thí nghiệm chính, bootstrap vẫn được sinh ngẫu nhiên có hoàn lại theo seed.")
+
+# 06 — Gini and a minimal decision tree.
+s = slide("Cây h₁ chọn ngưỡng làm giảm Gini nhiều nhất", "02 / Ví dụ tính tay", "examples/toy_bagging.py · [5]")
+label(s, .67, 2.1, "TRƯỚC KHI CHIA")
+txt(s, .67, 2.67, 5.5, .52, "3 lành + 2 ác", 30, NAVY, True)
+txt(s, .67, 3.44, 5.5, .9, "Gini = 1 − (3/5)² − (2/5)²\n        = 0,48", 24, TEAL, leading=1.3)
+table(s, .67, 4.82, [2.55, 2.6], [["Ngưỡng", "Gini sau chia"], ["1,5 / 2,5 / 4,0", "0,2667 / 0 / 0,30"]], .58, 16)
+panel(s, 6.8, 2.05, 5.88, 3.85, BG)
+panel(s, 8.33, 2.48, 2.8, .7, NAVY)
+txt(s, 8.55, 2.65, 2.36, .38, "x ≤ 2,5 ?", 24, WHITE, True, PP_ALIGN.CENTER)
+rule(s, 9.0, 3.2, 8.1, 4.15, LINE, 2); rule(s, 10.45, 3.2, 11.36, 4.15, LINE, 2)
+txt(s, 7.58, 3.57, 1.2, .3, "ĐÚNG", 11, TEAL, True)
+txt(s, 10.7, 3.57, 1.2, .3, "SAI", 11, CORAL, True)
+txt(s, 7.18, 4.26, 2.6, .48, "3 lành", 27, TEAL, True, PP_ALIGN.CENTER)
+txt(s, 9.98, 4.26, 2.4, .48, "2 ác", 27, CORAL, True, PP_ALIGN.CENTER)
+txt(s, 7.28, 5.05, 5.0, .4, "Cả hai nhánh: Gini = 0", 20, GRAY, align=PP_ALIGN.CENTER)
+takeaway(s, "Ngưỡng 2,5 cho Gini sau chia bằng 0; mức giảm đạt 0,48.")
+note(s, "Bootstrap của h₁ có các giá trị [1, 1, 3, 5, 2], gồm ba nhãn lành và hai nhãn ác. Gini ban đầu bằng 0,48. Các ngưỡng ứng viên là 1,5; 2,5 và 4,0, cho Gini sau chia lần lượt 0,2667; 0 và 0,30. Ngưỡng 2,5 có mức giảm lớn nhất nên được chọn. h₂ thiếu x = 3 nên học ngưỡng 3,0; h₃ có ngưỡng 2,5. Phép tính được đối chiếu với cây một mức của scikit-learn, không phải bộ học cây do nhóm tự cài từ đầu.")
+
+# 07 — Voting remains linked to exactly those three fitted trees.
+s = slide("Mẫu x = 2,8 nhận hai phiếu ác và một phiếu lành", "02 / Ví dụ tính tay", "Cùng ba bootstrap ở slide 5 · examples/toy_bagging.py")
+for i, tr in enumerate(T["trees"]):
+    x = .67 + i * 4.13; pred = tr["query_prediction"]
+    panel(s, x, 2.22, 3.79, 2.65, BG)
+    label(s, x + .25, 2.51, f"CÂY h{i + 1}")
+    rel = "≤" if 2.8 <= tr["threshold"] else ">"
+    txt(s, x + .25, 3.12, 3.3, .47, f"2,8 {rel} {num(tr['threshold'], 1)}", 28, NAVY, True)
+    txt(s, x + .25, 3.94, 3.3, .5, "Lành tính" if pred else "Ác tính", 27, TEAL if pred else CORAL, True)
+txt(s, .7, 5.17, 4.3, .8, "2 : 1", 46, CORAL, True)
+txt(s, 4.72, 5.34, 7.7, .6, "Hard voting chọn ác tính (0).", 25, NAVY, True)
+takeaway(s, "Mẫu toy chưa có nhãn thật: chưa thể nói đúng/sai; 2/3 phiếu không phải xác suất bệnh.")
+note(s, "Đưa cùng quan sát mới x = 2,8 qua ba cây. Với h₁ và h₃, giá trị này lớn hơn ngưỡng 2,5 nên dự đoán ác, nhãn 0. Với h₂, 2,8 nhỏ hơn hoặc bằng ngưỡng 3,0 nên dự đoán lành, nhãn 1. Tổ hợp có hai phiếu ác và một phiếu lành, vì vậy chọn nhãn 0. Đây chỉ là minh họa quy tắc đa số. Mẫu mới chưa có nhãn thật, nên chưa thể kết luận dự đoán đúng hay sai; tỷ lệ phiếu cũng chưa phải xác suất bệnh.")
+
+# 08 — Rules of aggregation.
+s = slide("Hard và soft voting có thể chọn khác lớp", "02 / Quy tắc tổng hợp", "Ví dụ giả định · [3]")
+table(s, .67, 2.15, [4.45, 2.5, 2.5, 2.5], [
+    ["Đầu ra từng mô hình", "Cây 1", "Cây 2", "Cây 3"],
+    ["P(ác tính)", "0,51", "0,51", "0,01"],
+    ["Nhãn dự đoán", "Ác", "Ác", "Lành"],
+], .67, 20)
+for x, title, desc, col in [(.67, "HARD → ÁC", "2 phiếu ác / 3 cây", CORAL),
+                             (6.85, "SOFT → LÀNH", "P(ác) trung bình = 0,343", TEAL)]:
+    panel(s, x, 4.7, 5.77, 1.28, BG)
+    txt(s, x + .23, 4.91, 5.3, .43, title, 24, col, True)
+    txt(s, x + .23, 5.48, 5.3, .32, desc, 18, GRAY)
+takeaway(s, "Thay quy tắc tổng hợp chưa chắc tốt hơn; cần kiểm tra trên cùng những cây đã học.")
+note(s, "Đây là ví dụ giả định để phân biệt hai quy tắc tổng hợp, khác với ví dụ tính tay trước. Hard voting chỉ đếm nhãn nên chọn ác với hai trong ba phiếu. Soft voting lấy trung bình xác suất: (0,51 + 0,51 + 0,01)/3 ≈ 0,3433 cho lớp ác, tương ứng khoảng 0,6567 cho lớp lành, nên chọn lành. Hai quy tắc có thể cho kết quả khác; soft không tự động tốt hơn hard. Phần đối chứng ở slide 21 kiểm tra chúng trên cùng các cây đã học thực tế.")
+
+# 09 — OOB and the finite bootstrap interpretation.
+s = slide("OOB chỉ dùng phiếu của cây chưa học quan sát đó", "02 / Đánh giá bổ sung", "outputs/results.json → oob · [1]")
+panel(s, .67, 2.08, 6.06, 3.88, BG)
+for j, (lab, has_seen) in enumerate([("Cây 1: có mẫu i", True), ("Cây 2: vắng mẫu i", False), ("Cây 3: vắng mẫu i", False)]):
+    yy = 2.48 + j * 1.0
+    txt(s, .96, yy, 3.6, .43, lab, 21, INK)
+    txt(s, 4.56, yy, 1.8, .43, "Không tính" if has_seen else "Được bỏ phiếu", 16.5, GRAY if has_seen else TEAL, True)
+stat(s, 7.17, 2.2, pct(R["oob"]["accuracy"]), "Accuracy OOB", "401/426 dự đoán đúng", w=5)
+txt(s, 7.17, 5.0, 5.1, .8, "Coverage 100%\nMỗi mẫu: 8–34 phiếu OOB", 21, NAVY, True, leading=1.3)
+takeaway(s, "OOB được tính sau chọn độ sâu trên train; là đánh giá bổ sung, chưa độc lập với tuning.")
+note(s, "Mỗi quan sát chỉ nhận phiếu OOB từ các cây chưa lấy nó vào bootstrap. Hàng chưa có phiếu được giữ không xác định, tránh dùng argmax trên hàng toàn 0. Lần tham chiếu có coverage 100% và 401/426 dự đoán đúng. Với N = 426, xác suất vắng trong một bootstrap khoảng 36,74%. Số quan sát khác nhau kỳ vọng là 269,47, thực tế trung bình 268,04; số phiếu OOB kỳ vọng mỗi mẫu là 18,74, thực tế 18,91. Coverage khác accuracy. OOB được tính sau chọn độ sâu nên chưa độc lập hoàn toàn với tuning.")
+
+# 10 — Data.
+s = slide("Bài toán phân loại trên 569 quan sát", "03 / Dữ liệu và giao thức", "Breast Cancer Wisconsin Diagnostic · load_breast_cancer · [4]")
+stat(s, .7, 2.12, "569", "quan sát", "Dữ liệu công khai", w=3.2)
+stat(s, 4.45, 2.12, "30", "đặc trưng số", "Đặc điểm nhân tế bào", w=3.2)
+stat(s, 8.2, 2.12, "2", "lớp dự đoán", "Ác tính (0) / lành tính (1)", w=4)
+bar_x, bar_w = .7, 11.9
+shape(s, bar_x, 5.15, bar_w * 212 / 569, .38, CORAL)
+shape(s, bar_x + bar_w * 212 / 569, 5.15, bar_w * 357 / 569, .38, TEAL)
+txt(s, bar_x, 5.71, 5, .35, "212 ác tính · lớp dương = 0", 18, CORAL, True)
+txt(s, 7.2, 5.71, 5.4, .35, "357 lành tính · nhãn 1", 18, TEAL, True, PP_ALIGN.RIGHT)
+takeaway(s, "Đầu vào là các đặc trưng đã trích xuất, không phải ảnh gốc. Mục đích minh họa học máy.")
+note(s, "Bộ dữ liệu có 569 quan sát, gồm 212 mẫu ác tính và 357 mẫu lành tính. Mỗi quan sát được mô tả bằng 30 đặc trưng số của nhân tế bào, như radius, texture và perimeter; đầu vào không phải ảnh gốc. Các mô hình dựa trên cây không yêu cầu chuẩn hóa thang đo như mô hình dùng khoảng cách. Báo cáo quy ước ác tính là lớp dương dù có mã 0, nên khi tính precision, recall và F1 cần đặt pos_label = 0. Đây là minh họa học máy, chưa có xác thực lâm sàng.")
+
+# 11 — A clearly isolated test branch and depth selection.
+s = slide("Chọn độ sâu trên train, giữ test bên ngoài", "03 / Dữ liệu và giao thức", "outputs/results.json · seed 42 · CV theo balanced accuracy")
+panel(s, .67, 2.05, 8.35, 1.0, PALE)
+txt(s, .94, 2.32, 7.8, .45, "TRAIN 426 mẫu · 159 ác / 267 lành", 23, TEAL, True)
+panel(s, 9.27, 2.05, 3.39, 3.75, NAVY)
+label(s, 9.55, 2.4, "TEST GIỮ RIÊNG", MINT, 2.9)
+txt(s, 9.55, 3.14, 2.8, .9, "143", 46, WHITE, True)
+txt(s, 9.55, 4.37, 2.8, 1.0, "53 ác / 90 lành\nChỉ đánh giá sau\nkhi chốt cấu hình.", 18, WHITE, leading=1.3)
+for yy, n, title, detail in [(3.45, "1", "CV phân tầng 5 fold", "Thử max_depth từ 2 đến 6."),
+                             (4.58, "2", "Chọn độ sâu 3", "Balanced accuracy CV: 93,73%.")]:
+    shape(s, .73, yy, .55, .55, TEAL, kind=MSO_SHAPE.OVAL)
+    txt(s, .73, yy + .1, .55, .3, n, 16, WHITE, True, PP_ALIGN.CENTER)
+    txt(s, 1.53, yy - .02, 6.8, .4, title, 23, NAVY, True)
+    txt(s, 1.53, yy + .49, 6.8, .4, detail, 18, GRAY)
+takeaway(s, "Độ sâu chọn bằng cây đơn rồi dùng chung cho ba mô hình; chưa tối ưu riêng từng ensemble.")
+note(s, "Mỗi seed chia dữ liệu theo tỷ lệ 75/25 và phân tầng theo nhãn. Tại seed 42, CV trên train cho balanced accuracy trung bình của độ sâu 2–6 lần lượt là 91,75%; 93,73%; 92,42%; 92,55% và 92,05%, nên chọn độ sâu 3. Các seed từ 42 đến 51 đều lặp lại quy trình chọn độ sâu chỉ trên train rồi đánh giá trên test tương ứng. Độ sâu được dùng chung cho ba mô hình, chưa tuning riêng. Cấu hình 51 cây được cố định ban đầu; khảo sát số cây được thực hiện bổ sung sau đó.")
+
+# 12 — Readable source code, one operation per slide.
+s = slide("Bootstrap được triển khai trực tiếp trong Python", "04 / Triển khai", "Trích lược ensemble_model.py · ManualBagging.fit")
+code(s, .67, 2.0, 8.21, '''indices = rng.integers(
+    0, n_samples, size=n_samples
+)
+tree = DecisionTreeClassifier(
+    max_depth=self.max_depth,
+    random_state=int(rng.integers(0, 2**31 - 1)),
+)
+tree.fit(X[indices], encoded[indices])
+self.estimators_.append(tree)''', 4.11)
+for i, (a, b) in enumerate([("Lấy có hoàn lại", "Có thể lặp chỉ số."), ("Seed riêng từng cây", "Hỗ trợ tái lập."), ("Đúng cặp X và y", "Dùng cùng indices.")]):
+    yy = 2.28 + 1.17 * i
+    label(s, 9.25, yy, f"0{i+1}", TEAL, 3.1)
+    txt(s, 9.25, yy + .32, 3.15, .42, a, 20, NAVY, True)
+    txt(s, 9.25, yy + .85, 3.15, .35, b, 15.5, GRAY)
+takeaway(s, "Cây cơ sở dùng scikit-learn; bootstrap, tổ chức các cây và OOB do nhóm triển khai.")
+note(s, "Đoạn trích nằm trong phương thức fit; X ở đây chỉ chứa train. Nhãn encoded được tạo bằng np.unique(y, return_inverse=True), giúp đưa các lớp về chỉ số liên tiếp. Bộ sinh rng khởi tạo từ random_state, rồi sinh n_samples chỉ số có hoàn lại và seed cho từng cây. Mỗi cây học X và nhãn trên cùng chỉ số bootstrap. Mã đầy đủ còn lưu estimators_samples_ để truy vết và tính OOB. Cây DecisionTreeClassifier dùng thư viện; phần nhóm tự triển khai là tổ chức lấy mẫu, nhiều cây và quản lý phiếu.")
+
+# 13 — Voting, with the class mapping retained.
+s = slide("Hard voting đếm phiếu rồi ánh xạ về nhãn gốc", "04 / Triển khai", "Trích lược ensemble_model.py · votes / predict")
+code(s, .67, 2.0, 8.21, '''counts = np.zeros(
+    (len(X), len(self.classes_)), dtype=np.int64
+)
+rows = np.arange(len(X))
+for tree in self.estimators_:
+    predicted = tree.predict(X).astype(int)
+    np.add.at(counts, (rows, predicted), 1)
+labels = self.classes_[counts.argmax(axis=1)]''', 4.11)
+txt(s, 9.25, 2.36, 3.12, .85, "Mỗi hàng =\nmột quan sát", 23, NAVY, True)
+txt(s, 9.25, 3.72, 3.12, .85, "Mỗi cột =\nmột lớp", 23, NAVY, True)
+txt(s, 9.25, 5.06, 3.12, .65, "Tổng phiếu / hàng = B", 18, TEAL, True)
+takeaway(s, "26/26 kiểm thử đạt: bootstrap, voting, OOB, nhãn, tái lập và quy trình đánh giá.")
+note(s, "Các cây học nhãn mã hóa nên predict trả về chỉ số cột lớp. np.add.at cộng một phiếu vào đúng hàng và cột; argmax chọn lớp nhiều phiếu nhất, rồi self.classes_ ánh xạ về nhãn gốc. Trong mã đầy đủ, votes và predict là hai phương thức riêng; slide gộp để giải thích. Bộ mã đạt 26/26 kiểm thử, gồm hard/soft khác nhãn, cây học một lớp và phép đo bất đồng. Chuyển lời cho thành viên thứ hai: từ cơ chế đã kiểm chứng, phần tiếp theo xem các cây hoạt động ra sao trên dữ liệu thực.")
+
+# 14 — Test results with two key aggregates.
+s = slide("Seed 42: Bagging đúng thêm 1 trên 143 mẫu test", "05 / Kết quả gốc", "outputs/results.json · test n = 143 · lớp dương: ác tính (0)")
+rows = [["Mô hình", "Accuracy", "Recall ác", "F1 ác"]]
+for name, m in zip(["Cây đơn", "Bagging tự viết", "Random Forest"], R["test_metrics"]):
+    rows.append([name, pct(m["accuracy"]), pct(m["recall_malignant"]), pct(m["f1_malignant"])])
+table(s, .67, 2.14, [4.45, 2.5, 2.5, 2.5], rows, .75, 21, (2,))
+txt(s, .76, 5.5, 5.6, .5, "Cây đơn: 135/143 đúng", 24, GRAY, True)
+txt(s, 6.8, 5.5, 5.6, .5, "Bagging: 136/143 đúng", 24, TEAL, True)
+takeaway(s, "Chênh lệch accuracy: +0,70 điểm phần trăm. Một lần chia chưa đủ kết luận ưu thế tổng quát.")
+note(s, "Ở seed 42, cây đơn đúng 135/143 mẫu, Bagging và Random Forest đúng 136/143 mẫu. Precision ác tính tương ứng là 94,12% và 94,23%. Bagging và RF có cùng chỉ số tổng hợp nhưng khác dự đoán ở hai hàng dữ liệu 291 và 128, nên chưa thể kết luận chúng tương đương. RF của scikit-learn xét ngẫu nhiên đặc trưng theo sqrt và trung bình xác suất; Bagging xét toàn bộ đặc trưng và dùng hard voting. Đối chiếu gốc vì vậy thay nhiều thành phần; phần sau sẽ tách chúng bằng thiết kế đối chứng.")
+
+# 15 — Confusion matrices are shapes rather than a small screenshot.
+s = slide("Số ca ác tính bị bỏ sót giảm từ 5 xuống 4", "05 / Đọc loại lỗi", "Seed 42 · hàng = nhãn thật · cột = dự đoán")
+for x, title, matrix in [(.85, "CÂY ĐƠN", [[48, 5], [3, 87]]), (7.05, "BAGGING", [[49, 4], [3, 87]])]:
+    label(s, x, 2.1, title)
+    txt(s, x + 1.62, 2.69, 3.1, .35, "DỰ ĐOÁN", 11, GRAY, True, PP_ALIGN.CENTER)
+    txt(s, x + 1.48, 3.13, 1.5, .35, "Ác", 18, INK, align=PP_ALIGN.CENTER)
+    txt(s, x + 3.07, 3.13, 1.5, .35, "Lành", 18, INK, align=PP_ALIGN.CENTER)
+    txt(s, x, 3.84, 1.2, .4, "Thật ác", 17, GRAY)
+    txt(s, x, 4.89, 1.2, .4, "Thật lành", 17, GRAY)
+    for r in range(2):
+        for c in range(2):
+            xx, yy = x + 1.38 + c * 1.58, 3.65 + r * 1.05
+            shape(s, xx, yy, 1.52, .99, PALE if r == c else SOFT_RED)
+            txt(s, xx, yy + .2, 1.52, .58, str(matrix[r][c]), 32, TEAL if r == c else CORAL, True, PP_ALIGN.CENTER)
+takeaway(s, "Bagging vẫn bỏ sót 4/53 mẫu ác tính; số dương tính giả giữ nguyên là 3.")
+note(s, "Đọc ma trận theo hàng nhãn thật và cột dự đoán, thứ tự ác tính rồi lành tính. So với cây đơn, Bagging có TP tăng từ 48 lên 49 và FN giảm từ 5 xuống 4; FP vẫn bằng 3, TN vẫn bằng 87. Recall ác tính tăng từ 48/53 = 90,57% lên 49/53 = 92,45%. FP là mẫu lành bị dự đoán ác. Đây là số đếm của một lần chia, chưa chứng minh Bagging luôn giảm bỏ sót. Cần đọc cả precision, recall và các loại lỗi, thay vì chỉ accuracy.")
+
+# 16 — Ten paired holdouts.
+s = slide("Bagging cao hơn cây đơn ở 9/10 lần chia", "05 / Mười lần chia gốc", "outputs/results.json · controlled_comparison.json · seed 42–51")
+rows = [["Mô hình", "Accuracy (%)", "Recall ác (%)", "F1 ác (%)"]]
+for name, m in zip(["Cây đơn", "Bagging", "Random Forest"], R["repeated_evaluation"]["summary"]):
+    rows.append([name, avg(m, "accuracy"), avg(m, "recall_malignant"), avg(m, "f1_malignant")])
+table(s, .67, 2.1, [3.5, 2.8, 2.8, 2.85], rows, .72, 19, (2,))
+txt(s, .75, 5.3, 4.0, .7, "+1,96 đpt", 35, TEAL, True)
+txt(s, 5.0, 5.24, 7.45, .85, "Accuracy trung bình Bagging − cây đơn.\nSo với RF: 2 thắng / 4 hòa / 4 thua.", 20, GRAY, leading=1.3)
+takeaway(s, "Trung bình ± SD mẫu; các test có thể giao nhau. Chưa có kiểm định ý nghĩa thống kê.")
+note(s, "Trung bình được trình bày theo phần trăm; SD mẫu theo điểm phần trăm. Mỗi seed đều chia lại 75/25 có phân tầng và chọn độ sâu trên train. Khi so accuracy trong cùng seed, Bagging cao hơn cây đơn 9 lần, bằng 1 lần, thấp hơn 0 lần; chênh lệch trung bình khoảng +1,96 điểm phần trăm. So với RF, các số tương ứng là 2, 4 và 4, chênh lệch trung bình −0,28 điểm phần trăm. Các holdout có thể giao nhau, nên không coi là mười phép thử độc lập hay suy ra giá trị p từ số lần thắng.")
+
+# 17 — Editable chart, with precise scope and SD beside it.
+s = slide("Tăng số cây có lợi, nhưng chưa tăng mãi", "06 / Khảo sát bổ sung trên train", "outputs/extensions/analysis.json · CV ngoài 5 fold · không dùng test")
+survey = E["tree_count_survey"]["summary"]
+count_chart(s, survey)
+txt(s, .92, 1.94, 6.8, .28, "BALANCED ACCURACY CV (%)", 11, GRAY, True)
+txt(s, 3.0, 5.75, 4.1, .3, "Số cây B (các cấu hình đã xét)", 13, GRAY, align=PP_ALIGN.CENTER)
+panel(s, 8.77, 2.13, 3.88, 3.88, BG)
+label(s, 9.05, 2.44, "51 CÂY", TEAL, 3)
+txt(s, 9.05, 3.04, 3.3, .75, avg(survey[4]), 31, TEAL, True)
+txt(s, 9.05, 4.0, 3.15, .6, "BA CV (%) · trung bình ± SD", 17, GRAY)
+txt(s, 9.05, 4.84, 3.15, .85, "101 cây: 95,07%\nChưa cải thiện thêm.", 20, NAVY, True, leading=1.3)
+takeaway(s, "51 là cấu hình ban đầu; khảo sát bổ sung chưa chứng minh đó là số cây tối ưu tổng quát.")
+note(s, "Khảo sát chỉ dùng 426 mẫu train của seed 42, với năm fold ngoài. Trong phần học của mỗi fold, CV năm fold chọn độ sâu bằng cây đơn; các độ sâu là [2, 6, 2, 2, 6]. Các cấu hình B = [1, 5, 11, 21, 51, 101] dùng chung độ sâu và chuỗi seed tương ứng. Balanced accuracy trung bình tăng đến 95,26% ở 51 cây, rồi còn 95,07% ở 101 cây. SD tại 51 cây là 2,45 điểm phần trăm, không phải khoảng tin cậy. Đây là khảo sát bổ sung, chưa chứng minh 51 tối ưu tổng quát.")
+
+# 18 — Error case as a balanced vote, not a confidence gauge.
+s = slide("Tổ hợp 51 cây vẫn có thể dự đoán sai", "06 / Phân tích mẫu 291", "outputs/extensions/analysis.json → reference_error")
+label(s, .7, 2.12, "NHÃN THẬT: LÀNH TÍNH", TEAL, 7)
+txt(s, .7, 2.77, 7.8, .62, "27 phiếu ác / 24 phiếu lành", 32, NAVY, True)
+shape(s, .72, 3.93, 11.88 * 27 / 51, .76, CORAL)
+shape(s, .72 + 11.88 * 27 / 51, 3.93, 11.88 * 24 / 51, .76, TEAL)
+txt(s, .87, 4.09, 5.9, .4, "27 · Ác", 22, WHITE, True)
+txt(s, 7.05, 4.09, 5.3, .4, "24 · Lành", 22, WHITE, True, PP_ALIGN.RIGHT)
+txt(s, .75, 5.17, 6.9, .65, "Đa số chọn ác → dương tính giả", 25, CORAL, True)
+txt(s, 9.02, 5.12, 3.3, .9, "Biên phiếu\n3/51 ≈ 5,88%", 19, GRAY, align=PP_ALIGN.RIGHT)
+takeaway(s, "Được chọn theo thứ tự test: đây là mẫu đầu tiên có hai phía phiếu, không chọn vì dễ giải thích.")
+note(s, "Quan sát được chọn có chỉ số test 2, tức mẫu thứ ba khi bắt đầu đếm từ 0, tương ứng hàng dữ liệu 291. Nhãn thật là lành tính, nhãn 1. Bagging nhận 27 phiếu ác và 24 phiếu lành, nên chọn nhãn 0 và tạo lỗi dương tính giả. Biên phiếu bằng 3/51 ≈ 0,0588; chênh lệch hai tỷ lệ là 5,88 điểm phần trăm, chưa phải xác suất bệnh đã hiệu chỉnh. RF dự đoán đúng mẫu này nhưng sai hàng 128, nên tổng FP vẫn bằng 3. Truy vết hai cây ở slide 25.")
+
+# 19 — Feature ranges, each on its own labelled scale.
+s = slide("Mẫu sai nằm giữa các vùng trung tâm của hai lớp", "06 / Giải thích hành vi mô hình", "Đặc trưng chọn theo tần suất nút gốc trên train · outputs/extensions/analysis.json")
+for j, f in enumerate(E["reference_error"]["comparisons"]):
+    yy = 2.1 + j * 1.29
+    txt(s, .71, yy + .12, 3.75, .45, f["feature"], 19, NAVY, True)
+    low, high = f["benign_q25"], f["malignant_q75"]
+    def xx(v): return 5.2 + 5.6 * (v - low) / (high - low)
+    rule(s, 5.0, yy + .43, 11.15, yy + .43, LINE, 1)
+    for prefix, col in [("benign", TEAL), ("malignant", CORAL)]:
+        q1, med, q3 = (f[prefix + k] for k in ("_q25", "_median", "_q75"))
+        shape(s, xx(q1), yy + .26, xx(q3) - xx(q1), .34, PALE if prefix == "benign" else SOFT_RED)
+        rule(s, xx(med), yy + .22, xx(med), yy + .64, col, 2)
+    shape(s, xx(f["value"]) - .07, yy + .34, .14, .18, NAVY, kind=MSO_SHAPE.DIAMOND)
+    txt(s, 11.36, yy + .11, 1.16, .42, num(f["value"], 5 if j == 1 else 2), 18, NAVY, True, PP_ALIGN.RIGHT)
+    txt(s, 5.05, yy + .77, 1.2, .25, num(low, 3 if j == 1 else 1), 11, GRAY)
+    txt(s, 10.0, yy + .77, 1.15, .25, num(high, 3 if j == 1 else 1), 11, GRAY, align=PP_ALIGN.RIGHT)
+for x, col, lab in [(1.0, TEAL, "Lành: hộp Q1–Q3"), (4.65, CORAL, "Ác: hộp Q1–Q3"), (8.4, NAVY, "◆ Mẫu 291")]:
+    shape(s, x, 6.08, .18, .12, col)
+    txt(s, x + .3, 6.0, 3.6, .3, lab, 12, GRAY)
+takeaway(s, "Mỗi hàng có thang riêng. Ba đặc trưng minh họa chưa đủ giải thích toàn bộ không gian 30 chiều.", y=6.48)
+note(s, "Ba đặc trưng được chọn từ tần suất xuất hiện tại nút gốc trên train: worst perimeter ở 16 cây, worst concave points ở 14 cây và worst radius ở 9 cây. Giá trị của mẫu 291 lần lượt là 109,10; 0,14890 và 16,25, đều nằm giữa trung vị hai lớp, đồng thời giữa Q3 lớp lành và Q1 lớp ác. Hộp biểu diễn Q1–Q3, vạch là trung vị, hình thoi là mẫu lỗi. Mỗi hàng có thang đo riêng, không so chiều dài giữa các đặc trưng. Phân tích này chưa xác định nguyên nhân y khoa.")
+
+# 20 — Factorial control, explicitly separated from sklearn RF.
+s = slide("Đối chứng 2 × 2 để tách hai yếu tố", "06 / Phân tích bổ sung trên train", "experiments/controlled_comparison.py · 426 train · test 143 không tham gia")
+txt(s, .75, 2.13, 4.0, .4, "XÉT ĐẶC TRƯNG", 12, GRAY, True)
+for i, title in enumerate(["Hard voting", "Soft voting"]):
+    txt(s, 4.26 + i * 4.13, 2.12, 3.9, .4, title, 22, NAVY, True, PP_ALIGN.CENTER)
+for r, lab in enumerate(["Toàn bộ", "sqrt"]):
+    yy = 3.05 + 1.12 * r
+    txt(s, .75, yy + .25, 3.2, .4, lab, 25, TEAL, True)
+    for c in range(2):
+        panel(s, 4.12 + c * 4.13, yy, 3.9, .92, PALE if r == 0 else BG)
+        txt(s, 4.3 + c * 4.13, yy + .27, 3.54, .4, "51 cây · cùng độ sâu", 20, NAVY, align=PP_ALIGN.CENTER)
+txt(s, .75, 5.59, 11.9, .43, "Giữ chung: fold · bootstrap · seed từng cây. Hard/soft dùng cùng cây đã học.", 18.5, GRAY)
+takeaway(s, "Nhóm sqrt là Bagging tự xây có ngẫu nhiên hóa đặc trưng; không đồng nhất với RF sklearn.")
+note(s, "Thiết kế 2 × 2 thay đổi cách xét đặc trưng và quy tắc tổng hợp, chỉ trên train của seed 42. Cả bốn cấu hình dùng cùng năm fold ngoài. Trong phần học mỗi fold, CV năm fold chọn độ sâu bằng cây đơn rồi dùng chung. Khi đổi all thành sqrt, giữ nguyên bootstrap và seed từng cây. Trong mỗi nhóm đặc trưng, hard và soft sử dụng chính những cây đã học, không huấn luyện lại khi đổi quy tắc. Đây là đối chứng bổ sung ở độ sâu được kiểm soát, chưa tuning riêng từng biến thể.")
+
+# 21 — Controlled outcomes.
+s = slide("Thay quy tắc tổng hợp chưa đem lại cải thiện", "06 / Kết quả đối chứng", "controlled_comparison_summary.csv · balanced accuracy CV · 5 fold trên train")
+rows = [["Xét đặc trưng", "Tổng hợp", "BA CV (%) · trung bình ± SD"]]
+for r in C["summary"]:
+    rows.append(["Toàn bộ" if r["features"] == "all" else "sqrt", r["aggregation"].capitalize(), avg(r)])
+table(s, .67, 2.08, [3.3, 2.75, 5.9], rows, .68, 20, (1, 2))
+txt(s, .77, 5.66, 11.6, .45, "All: hard/soft trùng 426 nhãn. Sqrt: khác nhau ở 1/426 quan sát.", 20, GRAY)
+takeaway(s, "Giữ hard voting và đổi all → sqrt: BA trung bình giảm 1,63 điểm phần trăm trong khảo sát.")
+note(s, "Balanced accuracy của all/hard và all/soft đều là 95,26 ± 2,45%; sqrt/hard là 93,62 ± 3,48%, sqrt/soft là 93,44 ± 3,77%. Trung bình được tính từ chỉ số của từng fold, không phải chỉ số gộp 426 dự đoán. SD theo điểm phần trăm, chưa phải khoảng tin cậy. Kết quả chưa chứng minh soft luôn kém hard hoặc hai quy tắc luôn tương đương. Các nhóm sqrt là Bagging ngẫu nhiên hóa đặc trưng tự xây, không đồng nhất với RF của scikit-learn. Báo cáo chưa kiểm định ý nghĩa thống kê của chênh lệch.")
+
+# 22 — One mechanism insight rather than another dense result table.
+s = slide("Đa dạng hơn chưa đủ: cây cơ sở cũng phải đủ tốt", "06 / Bài học từ đối chứng", "controlled_comparison_summary.csv · số trung bình qua 5 fold", dark=True)
+for x, title, before, after, detail, col in [
+    (.74, "BẤT ĐỒNG GIỮA CÁC CÂY", "7,99%", "10,52%", "D tăng khi dùng sqrt", MINT),
+    (7.12, "CHẤT LƯỢNG MỘT CÂY", "91,67%", "89,75%", "Balanced accuracy trung bình giảm", "F0AB92"),
 ]:
-    circle(s, .75, yy, .75, TEAL, num, 22)
-    text(s, 1.8, yy-.02, 10.7, .6, title_, 26, WHITE, True)
-    text(s, 1.8, yy+.7, 10.7, .55, body, 18, "C9D8DF")
-note(s, "Kết lại ba ý. Một: hiệu quả ensemble đến từ cả chất lượng mô hình cơ sở lẫn sự đa dạng. Hai: Bagging gồm lấy mẫu có hoàn lại, học độc lập và tổng hợp; ví dụ nhỏ đã nối đủ dữ liệu, ba bootstrap, ba cây và phiếu. Ba: seed tham chiếu đạt 95,10% accuracy và vẫn bỏ sót bốn ca ác tính; qua 10 holdout, accuracy trung bình của Bagging khoảng 94,76%, SD mẫu 1,59 điểm phần trăm. Chưa suy ra hiệu quả lâm sàng hoặc một phương pháp luôn thắng. Gợi ý tập luyện hai người: Nguyễn Nghĩa Hiếu trình bày trang 1–11, Trần Quốc Bảo trình bày trang 12–24; chuyển lời ở trang 12 từ ví dụ nhỏ sang bài toán thật. Đây là phương án chuẩn bị, không phải xác nhận lịch sử đóng góp. Cả hai cần hiểu code và sẵn sàng trả lời. Hai trang cuối dùng khi hỏi đáp.")
+    label(s, x, 2.18, title, col, 5.3)
+    txt(s, x, 3.08, 5.3, .77, before, 43, WHITE, True)
+    txt(s, x, 4.05, 5.3, .77, "→ " + after, 43, col, True)
+    txt(s, x, 5.25, 5.3, .5, detail, 19, "C5D6E1")
+takeaway(s, "Kết quả tổ hợp hard: 95,26% → 93,62%. Đây là quan sát trong cấu hình được kiểm soát.", True)
+note(s, "D là tỷ lệ các cặp cây dự đoán khác nhãn, trung bình trên các quan sát và fold; chưa phải tương quan lỗi hay mức độc lập. Với hai lớp và 51 cây, D tối đa khoảng 50,98%. Ngẫu nhiên hóa đặc trưng làm tăng bất đồng nhưng giảm chất lượng cây cơ sở; balanced accuracy tổ hợp hard cũng giảm. Điều này chưa chứng minh xét toàn bộ đặc trưng luôn tốt hơn. Công thức phương sai σ²[ρ + (1 − ρ)/B] chỉ tạo trực giác khi các dự đoán số cùng phương sai và tương quan; không suy ρ từ D.")
 
-# 22 — sources
-s = slide("Tài liệu tham khảo", "08 • Nguồn và khả năng tái lập")
-refs = [
-    ("[1] Breiman (1996). Bagging Predictors. Machine Learning 24, 123–140.", "https://doi.org/10.1007/BF00058655"),
-    ("[2] Breiman (2001). Random Forests. Machine Learning 45, 5–32.", "https://doi.org/10.1023/A:1010933404324"),
-    ("[3] scikit-learn — Ensemble methods (Voting, Bagging, RF, Boosting, Stacking).", "https://scikit-learn.org/stable/modules/ensemble.html"),
-    ("[4] scikit-learn — Breast Cancer Wisconsin Diagnostic dataset.", "https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html"),
-    ("[5] scikit-learn — Decision Trees (Gini impurity, splitting criteria).", "https://scikit-learn.org/stable/modules/tree.html"),
-    ("[6] Freund & Schapire (1997). A Decision-Theoretic Generalization…", "https://doi.org/10.1006/jcss.1997.1504"),
-    ("[7] Wolpert (1992). Stacked Generalization. Neural Networks 5(2), 241–259.", "https://doi.org/10.1016/S0893-6080(05)80023-1"),
+# 23 — Three concise limitations and an accessible reproducibility anchor.
+s = slide("Kết quả có thể tái lập, nhưng kết luận có giới hạn", "07 / Thảo luận", "Mã, cấu hình và kết quả được cung cấp trong repository")
+for i, (title, desc) in enumerate([
+    ("Chưa tuning riêng", "Độ sâu chọn bằng cây đơn\nrồi dùng chung cho các mô hình."),
+    ("Các holdout giao nhau", "SD mô tả dao động;\nchưa phải khoảng tin cậy."),
+    ("Phân tích bổ sung", "Chỉ dùng train seed 42.\nChưa đánh giá trên\ndữ liệu ngoài độc lập."),
+]):
+    x = .68 + i * 4.13
+    panel(s, x, 2.15, 3.78, 3.12, BG)
+    txt(s, x + .24, 2.52, 3.3, .8, title, 24, NAVY, True)
+    txt(s, x + .24, 3.69, 3.3, 1.45, desc, 18, GRAY, leading=1.3)
+txt(s, .75, 5.43, 3.3, .6, "26/26 kiểm thử", 28, TEAL, True)
+obj = txt(s, 5.0, 5.55, 7.35, .45, "github.com/Huyngaongow/hocmaygk", 21, BLUE)
+obj.click_action.hyperlink.address = "https://github.com/Huyngaongow/hocmaygk"
+takeaway(s, "Bài minh họa phương pháp học máy; chưa đủ bằng chứng đánh giá hiệu quả chẩn đoán lâm sàng.")
+note(s, "Bộ mã có 26 kiểm thử giúp phát hiện lỗi cài đặt, không thay thế đánh giá ngoài mẫu. Gói nộp kèm chương trình, kết quả và báo cáo. Chạy thí nghiệm gốc để tạo results.json trước hai script bổ sung; dùng các phiên bản thư viện trong requirements.txt. Học tuần tự B cây có chi phí xấp xỉ B lần chi phí một cây; dự đoán K quan sát, độ sâu d có bậc O(KBd). Đây là phân tích cấu trúc, chưa đo thời gian thực. Demo nhanh lưu ở outputs/quick để giữ riêng kết quả mặc định.")
+
+# 24 — Answer the three questions, then stop the main talk.
+s = slide("Ba kết luận từ dữ liệu đã khảo sát", "07 / Kết luận và trao đổi", "Cảm ơn thầy và các bạn · Slide 25–28 dành cho hỏi đáp", dark=True)
+for i, (headline, detail) in enumerate([
+    ("Bagging cải thiện so với cây đơn", "Accuracy cao hơn ở 9/10 lần chia; trung bình +1,96 điểm phần trăm."),
+    ("Số cây cần được kiểm tra", "Tăng từ 51 lên 101 cây chưa cải thiện BA CV trong thiết kế đã chạy."),
+    ("Đa dạng đi cùng chất lượng", "Các cây khác nhau hơn chưa bảo đảm tổ hợp dự đoán tốt hơn."),
+]):
+    yy = 2.07 + i * 1.42
+    txt(s, .75, yy, .6, .55, f"0{i+1}", 24, MINT, True)
+    txt(s, 1.7, yy, 10.6, .52, headline, 27, WHITE, True)
+    txt(s, 1.7, yy + .68, 10.6, .5, detail, 19, "C5D6E1")
+note(s, "Kết thúc bằng ba ý trả lời câu hỏi nghiên cứu. Bagging liên hệ bootstrap với tổng hợp dự đoán; cải thiện so với cây đơn trong các lần chia đã khảo sát; nhưng tăng số cây hoặc mức bất đồng chưa tự động tạo mô hình tốt hơn. Chưa thể khẳng định Bagging vượt trội nhất quán so với RF, 51 cây tối ưu tổng quát hay mô hình đủ hiệu quả lâm sàng. Phần trình bày chính dừng tại đây. Hai thành viên cùng tham gia hỏi đáp và chỉ mở slide dự phòng phù hợp với câu hỏi.")
+
+# 25 — Backup: two true paths with honest leaf counts.
+s = slide("A. Cùng mẫu 291, hai cây đi tới hai nhãn", "Phụ lục / Truy vết cây", "outputs/extensions/analysis.json · representative_paths", backup=True)
+for x, title, lines, final, col in [
+    (.68, "CÂY 1 → ÁC", ["worst radius ≤ 16,79500", "worst concave points > 0,14315", "worst symmetry > 0,28855"], "Lá: 18 lượt bootstrap, tất cả nhãn ác.", CORAL),
+    (6.88, "CÂY 2 → LÀNH", ["mean concave points ≤ 0,04989", "worst symmetry > 0,16385", "worst perimeter ≤ 127,20000"], "Lá: 256/259 lượt nhãn lành (98,84%).", TEAL),
+]:
+    panel(s, x, 2.12, 5.78, 3.93, BG)
+    label(s, x + .24, 2.46, title, col, 5.3)
+    for j, value in enumerate(lines):
+        txt(s, x + .25, 3.17 + j * .62, 5.27, .42, f"{j+1}. {value}", 17.2, NAVY)
+    txt(s, x + .25, 5.33, 5.27, .55, final, 15.4, col, True)
+takeaway(s, "Các lượt bootstrap có thể lặp hàng; độ thuần tại lá không bảo đảm đúng với quan sát mới.")
+note(s, "Các ngưỡng trên slide đã làm tròn để dễ đọc; JSON lưu giá trị đầy đủ. Mẫu có worst radius = 16,25; worst concave points = 0,14890; worst symmetry = 0,29620; mean concave points = 0,04819 và worst perimeter = 109,10. Theo hai chuỗi điều kiện khác nhau, cây thứ nhất đến lá chứa 18 lượt nhãn ác; cây thứ hai đến lá có 256 lượt lành và 3 lượt ác. Bootstrap có thể lặp hàng nên số lượt chưa phải số bệnh nhân khác nhau. Hai đường đi chỉ giải thích hai phiếu; tổ hợp cuối dùng đủ 51 cây.")
+
+# 26 — Backup: calculations.
+s = slide("B. Tính chỉ số với ác tính là lớp dương", "Phụ lục / Kiểm tra phép tính", "Bagging seed 42 · TP=49, FN=4, FP=3, TN=87", backup=True)
+table(s, .67, 2.02, [3.1, 4.35, 4.5], [
+    ["Chỉ số", "Công thức", "Kết quả"],
+    ["Accuracy", "(TP + TN) / N", "136/143 = 95,10%"],
+    ["Precision ác", "TP / (TP + FP)", "49/52 = 94,23%"],
+    ["Recall ác", "TP / (TP + FN)", "49/53 = 92,45%"],
+    ["F1 ác", "2TP / (2TP + FP + FN)", "98/105 = 93,33%"],
+    ["Specificity", "TN / (TN + FP)", "87/90 = 96,67%"],
+    ["Balanced accuracy", "Trung bình recall hai lớp", "94,56%"],
+], .56, 17.5)
+takeaway(s, "Accuracy test, balanced accuracy CV và OOB là các phép đánh giá khác nhau.")
+note(s, "TP và FN đọc từ hàng nhãn thật ác tính; FP và TN từ hàng nhãn thật lành tính. Với Bagging tại seed 42, TP = 49, FN = 4, FP = 3 và TN = 87. Balanced accuracy bằng (49/53 + 87/90)/2 ≈ 94,56%. Vì lớp dương có nhãn 0, các hàm tính precision, recall và F1 dùng pos_label = 0. Phân biệt accuracy test 95,10% với balanced accuracy CV 95,26% trên train: chúng thuộc hai quy trình khác nhau. Tỷ lệ phiếu cây chưa phải xác suất bệnh đã hiệu chỉnh.")
+
+# 27 — Backup: theory beyond the measured models.
+s = slide("C. Boosting và Stacking khác Bagging ở đâu?", "Phụ lục / Mở rộng lý thuyết", "[3], [6], [7] · Chưa chạy thực nghiệm hai phương pháp này", backup=True)
+for x, title, body_ in [(.68, "BOOSTING", "Học một chuỗi mô hình.\nAdaBoost tăng trọng số tương đối\ncho mẫu dự đoán sai.\nGradient Boosting giảm hàm mất mát."),
+                        (6.88, "STACKING", "Học mô hình tầng hai.\nĐầu vào là dự đoán ngoài fold (OOF)\ncủa các mô hình cơ sở.\nTránh dùng dự đoán in-sample để học tầng hai.")]:
+    panel(s, x, 2.2, 5.78, 3.75, BG)
+    txt(s, x + .26, 2.59, 5.2, .5, title, 26, NAVY, True)
+    txt(s, x + .26, 3.57, 5.2, 1.9, body_, 19, GRAY, leading=1.4)
+takeaway(s, "Bagging đổi mẫu train để học các mô hình độc lập; hai hướng trên thay đổi cách phối hợp.")
+note(s, "Trong ví dụ AdaBoost nhị phân, sai số có trọng số bằng 0,2 cho alpha = 0,5 ln 4 ≈ 0,693. Nhóm sai nhân 2, nhóm đúng nhân 0,5; sau chuẩn hóa, nhóm sai mang 50% trọng số. Đây chưa phải accuracy tăng từ 20% lên 50%. Stacking dùng dự đoán ngoài fold để mỗi quan sát train nhận dự đoán từ mô hình chưa học nó, rồi học meta-model. Khi dự đoán dữ liệu mới, các mô hình cơ sở học lại trên toàn train. Nếu hỏi 51 cây: đó là cấu hình ban đầu, khảo sát bổ sung chưa chứng minh tối ưu tổng quát.")
+
+# 28 — Backup: sources and executable commands.
+s = slide("D. Tài liệu tham khảo và cách tái lập", "Phụ lục / Nguồn", "Danh mục đầy đủ và DOI nằm trong báo cáo Word/PDF", backup=True)
+references = [
+    "[1] Breiman (1996). Bagging Predictors. Machine Learning 24, 123–140.",
+    "[2] Breiman (2001). Random Forests. Machine Learning 45, 5–32.",
+    "[3] scikit-learn User Guide. Ensemble methods.",
+    "[4] scikit-learn API. load_breast_cancer.",
+    "[5] scikit-learn User Guide. Decision Trees.",
+    "[6] Freund & Schapire (1997). An Application to Boosting. JCSS 55(1).",
+    "[7] Wolpert (1992). Stacked Generalization. Neural Networks 5(2).",
 ]
-for i, (label, url) in enumerate(refs):
-    yy = 1.85+i*.66
-    text(s, .7, yy, 11.9, .33, label, 15, INK, True)
-    obj = text(s, .7, yy+.31, 11.9, .27, url, 10, TEAL)
-    obj.text_frame.paragraphs[0].runs[0].hyperlink.address = url
-text(s, .7, 6.65, 11.9, .25, "Số liệu: outputs/results.json • Seeds 42–51 (tham chiếu 42) • NumPy 2.3.5 / scikit-learn 1.8.0", 11, GRAY)
-note(s, "Các nguồn 1 và 2 là các bài báo gốc về Bagging và Random Forest. Nguồn 6 cho AdaBoost và nguồn 7 cho Stacking. Tài liệu scikit-learn giải thích các lớp thư viện và đặc tính dataset. Số liệu thực nghiệm trong bài được lấy từ outputs/results.json của kho, không lấy từ các bài báo hoặc benchmark bên ngoài. Mã và requirements.txt đi kèm để tái lập; sử dụng cùng seed và phiên bản giúp giảm khác biệt do môi trường. Các URL có thể bấm trong PowerPoint. PDF đề bài yêu cầu đủ nguyên lý, quy trình, ứng dụng và mã nguồn; phần trình bày đã lần lượt bao phủ các nội dung này.")
+txt(s, .73, 2.03, 11.9, 2.6, "\n".join(references), 15.8, INK, leading=1.52)
+panel(s, .67, 5.01, 11.95, 1.45, NAVY)
+txt(s, .93, 5.22, 11.4, 1.05, "python de_5_ensemble_learning.py\npython experiments/report_extensions.py\npython experiments/controlled_comparison.py", 17.3, WHITE, font=MONO, leading=1.28)
+note(s, "Tài liệu: [1] https://doi.org/10.1007/BF00058655; [2] https://doi.org/10.1023/A:1010933404324; [3] https://scikit-learn.org/stable/modules/ensemble.html; [4] https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html; [5] https://scikit-learn.org/stable/modules/tree.html; [6] https://doi.org/10.1006/jcss.1997.1504; [7] https://doi.org/10.1016/S0893-6080(05)80023-1. Mã nhóm: https://github.com/Huyngaongow/hocmaygk. Dùng Python 3.12 và requirements.txt. Chạy thí nghiệm gốc trước hai phân tích bổ sung. Kiểm thử: python -m unittest discover -s tests -v. Ví dụ: python examples/toy_bagging.py. Demo nhanh: python de_5_ensemble_learning.py --repeats 1 --output-dir outputs/quick. Dùng Python trong venv đã cài thư viện; trên Windows có thể gọi trực tiếp .venv\\Scripts\\python.exe.")
 
-# 23 — Q&A appendix
-s = slide("Câu hỏi thường gặp khi bảo vệ", "Phụ lục A • Dùng khi hỏi đáp", source="Gợi ý trả lời dựa trên mã và thiết kế hiện tại")
-questions = [
-    ("Vì sao 51 cây?", "Minh họa tổ hợp đủ lớn, tránh hòa ở hai lớp; chưa tối ưu số cây."),
-    ("Vì sao không chuẩn hóa?", "Các cây dùng phép chia theo ngưỡng, không dựa vào khoảng cách Euclid."),
-    ("Test có bị dùng để tuning?", "Không. Độ sâu chọn bằng CV trên train; test chỉ đánh giá cuối."),
-    ("Bagging có luôn tốt hơn?", "Không. Lỗi tương quan cao và mô hình cơ sở yếu có thể làm lợi ích thấp."),
-    ("Vì sao nhấn mạnh recall?", "Recall ác tính phản ánh tỷ lệ phát hiện và số ca ác tính bị bỏ sót."),
-]
-for i, (q, a) in enumerate(questions):
-    yy=1.95+i*.9
-    rect(s, .65, yy, 12, .77, WHITE, radius=True)
-    text(s, .85, yy+.15, 3.6, .48, q, 18, TEAL, True)
-    text(s, 4.6, yy+.14, 7.8, .55, a, 16, INK)
-note(s, "Đây là phụ lục cho hỏi đáp, không bắt buộc trình bày hết. Nếu được hỏi số cây có tối ưu không, trả lời trung thực là chưa; 51 là cấu hình minh họa cố định, không chọn dựa trên test. Nếu được hỏi bootstrap có mất dữ liệu không, mỗi cây có thể không thấy một phần dữ liệu nhưng các cây sử dụng các mẫu khác nhau; không đảm bảo mọi mẫu đều được thấy ở mọi cây. Nếu được hỏi vì sao Random Forest bằng Bagging, các số liệu tổng hợp trùng nhau trong lần chạy không chứng minh hai mô hình tương đương. Nếu được hỏi có thể chẩn đoán không, trả lời chưa có kiểm định lâm sàng và thí nghiệm vẫn bỏ sót ca ác tính.")
-
-# 24 — metrics appendix
-s = slide("Cách tính chỉ số với ác tính là lớp dương", "Phụ lục B • Kiểm tra phép tính", source="Số đếm của Bagging: TP = 49, FN = 4, FP = 3, TN = 87")
-table(s, .65, 1.95, [3.0, 4.0, 5.0], .85, [
-    ["Chỉ số", "Công thức", "Thay số Bagging"],
-    ["Accuracy", "(TP + TN) / N", "(49 + 87) / 143 = 95,10%"],
-    ["Precision ác tính", "TP / (TP + FP)", "49 / (49 + 3) = 94,23%"],
-    ["Recall ác tính", "TP / (TP + FN)", "49 / (49 + 4) = 92,45%"],
-    ["F1 ác tính", "2TP / (2TP + FP + FN)", "98 / (98 + 3 + 4) = 93,33%"],
-], font_size=17)
-text(s, .75, 6.5, 11.8, .35, "Balanced accuracy dùng trong CV = (Recall ác tính + Recall lành tính) / 2.", 17, TEAL, True)
-note(s, "Dùng trang này khi cần giải thích cụ thể các con số. Quy ước dương là ác tính dù mã nhãn bằng 0. TP là ca ác được dự đoán ác; FN là ca ác bị dự đoán lành; FP là ca lành bị dự đoán ác; TN là ca lành được dự đoán lành. Tổng mẫu bằng 49 cộng 4 cộng 3 cộng 87 bằng 143. F1 là trung bình điều hòa của precision và recall, tương đương công thức hai TP chia hai TP cộng FP cộng FN. Balanced accuracy trung bình recall của hai lớp được dùng để chọn độ sâu trong CV, khác accuracy thường ở bảng test. Nếu mẫu test thiếu một lớp thì cần xem lại cách diễn giải; ở đây cả hai lớp đều có mặt.")
-
-prs.save(OUT)
-md = ["# Lời thuyết trình — Đề 5: Ensemble Learning", "", "26 slide: 24 trang chính và 2 trang phụ lục. Gợi ý khoảng 15–20 phút cho phần chính; thời lượng thực tế theo giảng viên. Nói ngắn phần mở rộng ở slide 10–11 khi cần.", "", "Thông tin bìa lấy từ report/group_info.json. Ví dụ slide 7–9 cùng một bộ dữ liệu giả lập và có mã tái lập. Các bảng thực nghiệm thuộc chạy đủ 10 seed.", ""]
-for idx, title_, content in notes:
-    md.extend([f"## Slide {idx:02d} — {title_}", "", content, ""])
+assert len(P.slides) == len(NOTES) == 28
+OUT = ROOT / "De_5_Ensemble_Learning.pptx"
+P.save(OUT)
+md = ["# Lời thuyết trình — Đề 5: Ensemble Learning", "",
+      "28 slide: 24 slide chính và 4 slide dự phòng. Gợi ý luyện tập 18–22 phút; thời lượng thực tế theo giảng viên.", "",
+      "Phân chia gợi ý: Nguyễn Nghĩa Hiếu slide 1–13; Trần Quốc Bảo slide 14–24; cả hai tham gia hỏi đáp. Đây là phương án luyện tập, không phải xác nhận lịch sử đóng góp.", "",
+      "Nguồn số liệu: outputs/results.json, outputs/extensions/analysis.json và controlled_comparison.json. Các khảo sát bổ sung chỉ dùng train seed 42.", ""]
+for idx, title, content in NOTES:
+    md.extend([f"## Slide {idx:02d} — {title}", "", content, ""])
 (ROOT / "presentation/loi_thuyet_trinh.md").write_text("\n".join(md), encoding="utf-8")
-print(f"Saved {OUT} ({len(prs.slides)} slides)")
+print(f"Saved {OUT} ({len(P.slides)} slides; editable shapes, chart and speaker notes)")

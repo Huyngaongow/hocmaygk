@@ -52,14 +52,15 @@ Hai bạn có thể đổi phần theo sở trường, nhưng cả hai cần hi�
 
 | Người trình bày | Phần chính | Câu chuyển |
 |---|---|---|
-| Nguyễn Nghĩa Hiếu | Slide 1–11: ý tưởng, các họ Ensemble và ví dụ tính từng bước | “Từ ví dụ nhỏ, phần tiếp theo áp dụng đúng cơ chế này vào bộ dữ liệu thực.” |
-| Trần Quốc Bảo | Slide 12–24: bài toán, code, thực nghiệm, phân tích lỗi và kết luận | “Kết quả cho thấy lợi ích trong thí nghiệm này; nhóm vẫn giữ rõ các giới hạn.” |
-| Cả hai | Slide 25–26: hỏi đáp/phép tính chỉ số | Người nắm phần được hỏi trả lời trước, người còn lại bổ sung nếu cần. |
+| Nguyễn Nghĩa Hiếu | Slide 1–13: ý tưởng, cơ chế, ví dụ, dữ liệu và hai đoạn code cốt lõi | “Từ cơ chế đã kiểm chứng, phần tiếp theo xem kết quả trên dữ liệu thực.” |
+| Trần Quốc Bảo | Slide 14–24: kết quả gốc, khảo sát số cây, mẫu sai, đối chứng và kết luận | “Kết quả có ích trong khảo sát; nhóm giữ rõ giới hạn của thiết kế.” |
+| Cả hai | Slide 25–28: truy vết cây, chỉ số, lý thuyết mở rộng và nguồn | Người nắm phần được hỏi trả lời trước, người còn lại bổ sung nếu cần. |
 
 Luyện theo thời lượng giảng viên thông báo. Nếu chưa có quy định riêng, có thể
-tập bản 15–20 phút và một bản rút gọn. Khi cần rút thời gian, nói ngắn slide 4,
-10–11 và để slide 25–26 cho hỏi đáp; giữ nguyên ví dụ, code và kết quả.
-15–20 phút là gợi ý luyện tập, không phải thời lượng bắt buộc trong PDF đề bài.
+tập bản 18–22 phút và một bản rút gọn. Khi cần rút thời gian, nói ngắn phần
+tổng quan slide 3 và đối chứng slide 20–22; để slide 25–28 cho hỏi đáp.
+Giữ nguyên ví dụ, code và kết quả. 18–22 phút là gợi ý luyện tập,
+không phải thời lượng bắt buộc trong PDF đề bài.
 
 ## 4. Demo ngắn, ít rủi ro
 

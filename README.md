@@ -268,7 +268,9 @@ tính tay, hard/soft voting, ánh xạ xác suất và phép đo bất đồng.
 | Demo, hỏi đáp và quy trình nộp | `HUONG_DAN_NOP_BAI.md` |
 | Thông tin nhóm dùng chung | `report/group_info.json` |
 
-Bộ **26 slide** có đồ họa/chữ chỉnh sửa được và lời thuyết trình trong Notes.
+Bộ **28 slide** (24 chính, 4 dự phòng) có đồ họa/chữ chỉnh sửa được và lời
+thuyết trình trong Notes. Bản thiết kế mới bổ sung khảo sát số cây, phân tích
+mẫu sai và đối chứng hard/soft, thống nhất với báo cáo hoàn thiện.
 `outputs/report.md` chỉ là phần thực nghiệm tự sinh; báo cáo hoàn chỉnh ở
 `report/`. PDF gốc của repo là bản slide, khác với PDF báo cáo.
 
