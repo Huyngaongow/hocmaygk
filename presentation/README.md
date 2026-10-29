@@ -1,6 +1,6 @@
 # PowerPoint đề 5
 
-- `../De_5_Ensemble_Learning.pptx`: 28 slide, gồm 24 slide chính và 4 slide dự phòng;
+- `../De_5_Ensemble_Learning.pptx`: 24 slide, gồm 20 slide chính và 4 slide dự phòng;
   chữ, bảng, sơ đồ và biểu đồ chỉnh sửa được trong PowerPoint;
   mỗi trang có lời thuyết trình trong phần **Notes**.
 - `../De_5_Ensemble_Learning.pdf`: bản xem nhanh của cùng bộ slide.
@@ -14,10 +14,10 @@ Thông tin thành viên, MSSV và giảng viên lấy từ `../report/group_info
 chỉnh ở một nơi rồi tạo lại slide, đồng thời cập nhật báo cáo Word để giữ thống nhất. Không tự điền
 tên lớp chưa được cung cấp. Nhóm có tối đa 3 thành viên theo đề.
 
-Dành khoảng 18–22 phút để luyện 24 slide chính; dùng 4 slide phụ lục để hỏi đáp.
+Dành khoảng 15–18 phút để luyện 20 slide chính; dùng 4 slide phụ lục để hỏi đáp.
 Đây là thời lượng tập luyện gợi ý,
 không phải quy định trong đề. Cả hai thành viên cần tham gia trình bày và hiểu
-code. Lời thuyết trình có gợi ý chuyển lời sau slide 13; đó là phương án chuẩn
+code. Lời thuyết trình có gợi ý chuyển lời sau slide 11; đó là phương án chuẩn
 bị, không phải xác nhận lịch sử đóng góp.
 
 Để tạo lại sau khi chạy thí nghiệm theo README ở thư mục gốc:
@@ -53,7 +53,7 @@ cố định với kết quả của `--repeats 1` hoặc cấu hình khác. Dem
 `python de_5_ensemble_learning.py --repeats 1 --output-dir outputs/quick`;
 tạo lại slide cần chạy đầy đủ cấu hình mặc định vào `outputs/` như trên.
 
-Ví dụ slide 5–7 dùng xuyên suốt `x=[1,2,3,4,5]`, nhãn lành/lành/ác/ác/ác,
+Ví dụ slide 4–6 dùng xuyên suốt `x=[1,2,3,4,5]`, nhãn lành/lành/ác/ác/ác,
 ba bootstrap cố định và ba cây một mức. Mã `examples/toy_bagging.py` tính
 ngưỡng `2,5; 3; 2,5`, Gini, dự đoán tại `x=2,8`, tổng phiếu `2:1` và OOB.
 Ngưỡng và phiếu trên slide được lấy trực tiếp từ hàm tính ví dụ; đây là dữ liệu
@@ -61,15 +61,24 @@ giả lập, không phải một ca bệnh. Mẫu mới không có nhãn thật 
 dự đoán đúng/sai. Ba bootstrap được chọn để nhìn rõ cơ chế; Bagging thực nghiệm
 vẫn lấy mẫu ngẫu nhiên có hoàn lại.
 
-Slide 17 khảo sát số cây chỉ trên train. Slide 18–19 phân tích mẫu sai 291.
-Slide 20–22 trình bày đối chứng 2 × 2 giữ chung bootstrap và seed từng cây;
+Slide 14 khảo sát số cây chỉ trên train. Slide 15–16 phân tích mẫu sai 291.
+Slide 17–18 trình bày đối chứng 2 × 2 giữ chung bootstrap và seed từng cây;
 nhóm sqrt tự xây không đồng nhất với Random Forest của sklearn. Phân tích
-theo cặp nằm cùng bảng mười seed ở slide 16. Mọi số liệu lấy từ JSON thực,
+theo cặp nằm cùng bảng mười seed ở slide 13. Mọi số liệu lấy từ JSON thực,
 không gõ lại kết quả làm tròn để dựng bảng.
 
 Thiết kế dùng khung hình 16:9, nền sáng, màu navy/teal thống nhất và không
 đổ bóng; màu coral dùng cho lỗi hoặc nhãn ác tính. Hai đoạn code tách riêng
-để dễ đọc khi chiếu. Slide 24 kết thúc phần chính; phụ lục gồm truy vết cây,
+để dễ đọc khi chiếu. Slide 20 kết thúc phần chính; phụ lục 21–24 gồm truy vết cây,
 công thức chỉ số, Boosting/Stacking và tài liệu tham khảo. Công thức sâu và
 chi tiết cập nhật AdaBoost nằm trong Notes. Các phương pháp này chỉ được
 giới thiệu lý thuyết, chưa được đo thực nghiệm.
+
+Bản rút gọn gộp dữ liệu với giao thức, kết quả seed 42 với ma trận nhầm lẫn,
+và thiết kế đối chứng với bảng kết quả. Phần giải thích chi tiết giữ trong Notes;
+ví dụ tính tay và hai slide code vẫn được trình bày riêng.
+
+Mỗi slide dùng chuyển cảnh **Fade** mức nhanh, chuyển bằng click hoặc phím
+tiến trang; không đặt thời gian tự chạy. Hiệu ứng nằm trong file PPTX chuẩn
+OOXML, có thể chỉnh ở tab Transitions. Mở Slide Show trong PowerPoint để xem;
+bản PDF phục vụ kiểm tra bố cục tĩnh và không có hiệu ứng chuyển cảnh.
