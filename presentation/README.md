@@ -1,6 +1,6 @@
 # PowerPoint đề 5
 
-- `../De_5_Ensemble_Learning.pptx`: 27 slide, gồm 23 slide chính và 4 slide dự phòng;
+- `../De_5_Ensemble_Learning.pptx`: 24 slide, gồm 18 slide chính và 6 slide dự phòng;
   chữ, bảng, sơ đồ và biểu đồ chỉnh sửa được trong PowerPoint;
   mỗi trang có lời thuyết trình trong phần **Notes**.
 - `../De_5_Ensemble_Learning.pdf`: bản xem nhanh của cùng bộ slide.
@@ -14,11 +14,10 @@ Thông tin thành viên, MSSV và giảng viên lấy từ `../report/group_info
 chỉnh ở một nơi rồi tạo lại slide, đồng thời cập nhật báo cáo Word để giữ thống nhất. Không tự điền
 tên lớp chưa được cung cấp. Nhóm có tối đa 3 thành viên theo đề.
 
-Dành khoảng 18–22 phút để luyện 23 slide chính; dùng 4 slide phụ lục để hỏi đáp.
-Đây là thời lượng tập luyện gợi ý,
-không phải quy định trong đề. Cả hai thành viên cần tham gia trình bày và hiểu
-code. Lời thuyết trình có gợi ý chuyển lời sau slide 13; đó là phương án chuẩn
-bị, không phải xác nhận lịch sử đóng góp.
+Dành khoảng 14–17 phút để luyện 18 slide chính; dùng slide 19–24 để hỏi đáp.
+Đây là thời lượng gợi ý, không phải quy định trong đề. Cả hai thành viên cần
+trình bày và hiểu code; Notes gợi ý chuyển lời sau slide 11, không xác nhận
+lịch sử đóng góp.
 
 Để tạo lại sau khi chạy thí nghiệm theo README ở thư mục gốc:
 
@@ -68,30 +67,23 @@ error có trọng số 0,2 cho alpha ≈ 1,386; tổng trọng số nhóm sai t�
 và đạt 50% sau chuẩn hóa. Đây không phải thay đổi accuracy hoặc số liệu một
 vòng huấn luyện thực tế. Slide 4 phân biệt Voting với Stacking ngoài fold (OOF).
 
-Slide 16 so sánh Bagging, AdaBoost, Voting hard/soft và Stacking qua mười
-holdout cùng seed42–51; có đối chứng Logistic Regression đơn ngay trên trang.
-Slide 26 cung cấp đủ mười mô hình, gồm cả mô hình cơ sở đơn. Các cấu hình mới
-được cố định trước lần chạy mở rộng: AdaBoost tối đa51 cây một mức; Voting
-và Stacking dùng cây độ sâu3, Logistic Regression chuẩn hóa trong pipeline và
-Gaussian NB. Stacking dùng CV phân tầng5fold trong train và Logistic Regression
-tầng hai. Các scaler chỉ được fit trên phần học trong từng fold. Không dùng test
-để tối ưu cấu hình; tuy nhiên đây là phần mở rộng sau khi đã xem kết quả gốc,
-không phải xác nhận độc lập mới. Không mặc định tổ hợp phải tốt hơn mô hình đơn.
+Slide 14 so sánh các họ ensemble trên cùng mười holdout seed 42–51, kèm
+đối chứng Logistic Regression đơn. Slide 23 cung cấp đủ mười mô hình. AdaBoost
+dùng tối đa 51 cây một mức; Voting/Stacking dùng cây sâu 3, Logistic Regression
+chuẩn hóa trong pipeline và Gaussian NB. Stacking dùng OOF phân tầng 5 fold,
+Logistic Regression tầng hai; scaler chỉ học trên phần train của từng fold.
+Cấu hình cố định, không tối ưu theo test; phần mở rộng vẫn là phân tích hậu nghiệm.
 
-Slide 17 khảo sát số cây chỉ trên train. Slide 18–19 phân tích mẫu sai291.
-Slide 20–21 trình bày đối chứng2×2 giữ chung bootstrap và seed từng cây;
-nhóm sqrt tự xây khác Random Forest của sklearn. Phân tích theo cặp của bài gốc
-nằm ở slide15. Mọi số liệu lấy trực tiếp từ JSON, không gõ lại số làm tròn.
+Slide 9 trình bày dữ liệu/giao thức; 10–11 là hai đoạn code; 12–13 là kết quả
+seed 42 và mười holdout. Slide 15 khảo sát số cây trên train; 16 phân tích mẫu
+sai 291; 17 gộp đối chứng 2×2 với bài học về tính đa dạng. Các cấu hình đối chứng
+giữ chung fold, bootstrap và seed từng cây; nhóm sqrt tự xây khác RF sklearn.
+Slide 18 gộp kết luận và giới hạn. Số liệu lấy trực tiếp từ JSON.
 
-Thiết kế dùng khung hình16:9, nền sáng, màu navy/teal nhất quán; màu coral
-biểu diễn lỗi hoặc nhãn ác tính. Hai đoạn code Bagging được tách riêng để dễ
-đọc. Slide23 kết thúc phần chính; phụ lục24–27 gồm truy vết cây, công thức
-chỉ số, kết quả đủ mười mô hình và tài liệu tham khảo. Notes ghi đủ phạm vi,
-cấu hình, cách tái lập và các giới hạn cần giải thích khi hỏi đáp.
-
-Bản rút gọn gộp dữ liệu với giao thức, kết quả seed 42 với ma trận nhầm lẫn,
-và thiết kế đối chứng với bảng kết quả. Phần giải thích chi tiết giữ trong Notes;
-ví dụ tính tay và hai slide code vẫn được trình bày riêng.
+Phụ lục 19–24 lần lượt là OOB, phân bố đặc trưng mẫu 291, truy vết hai cây,
+công thức chỉ số, bảng mười mô hình và nguồn. Ví dụ hard/soft được giữ trong
+Notes slide 4. Ví dụ tính tay và hai slide code vẫn trình bày riêng; lời giải
+thích chi tiết nằm trong Notes. Khung hình 16:9, màu navy/teal và coral nhất quán.
 
 Mỗi slide dùng chuyển cảnh **Fade** mức nhanh, chuyển bằng click hoặc phím
 tiến trang; không đặt thời gian tự chạy. Hiệu ứng nằm trong file PPTX chuẩn

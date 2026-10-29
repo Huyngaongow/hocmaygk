@@ -308,10 +308,11 @@ bản mở rộng (26 kiểm thử cũ và 6 kiểm thử mới).
 | Demo, hỏi đáp và quy trình nộp | `HUONG_DAN_NOP_BAI.md` |
 | Thông tin nhóm dùng chung | `report/group_info.json` |
 
-Bộ **27 slide** (23 chính, 4 dự phòng) có đồ họa/chữ chỉnh sửa được, lời
-thuyết trình trong Notes và chuyển cảnh Fade nhẹ khi trình chiếu. Bản rút gọn
-giữ khảo sát số cây, phân tích mẫu sai và đối chứng hard/soft; bổ sung cơ chế
-AdaBoost, Voting/Stacking và bảng so sánh thực nghiệm, thống nhất với báo cáo.
+Bộ **24 slide** (18 chính, 6 dự phòng) có đồ họa/chữ chỉnh sửa được, Notes và
+chuyển cảnh Fade bằng click. Phần chính giữ ví dụ tính tay, hai đoạn code,
+cơ chế AdaBoost/Voting/Stacking và kết quả; gộp đối chứng với bài học về tính
+đa dạng, kết luận với giới hạn. OOB, phân tích đặc trưng, truy vết cây và bảng
+đầy đủ nằm ở phụ lục. Gợi ý luyện 14–17 phút, chuyển lời sau slide 11.
 `outputs/report.md` chỉ là phần thực nghiệm tự sinh; báo cáo hoàn chỉnh ở
 `report/`. PDF gốc của repo là bản slide, khác với PDF báo cáo.
 
