@@ -13,13 +13,14 @@
 | Tệp | Mục đích |
 |---|---|
 | `report/Bao_cao_Ensemble_Learning_da_hoan_thien.docx` | Báo cáo Word hoàn thiện theo form, sáu chương |
-| `report/Bao_cao_Ensemble_Learning_da_hoan_thien.pdf` | Báo cáo PDF 51 trang để đọc/nộp |
+| `report/Bao_cao_Ensemble_Learning_da_hoan_thien.pdf` | Báo cáo PDF hoàn thiện để đọc/nộp |
 | `De_5_Ensemble_Learning.pptx` | Slide có ghi chú lời thuyết trình |
 | `De_5_Ensemble_Learning.pdf` | Bản PDF của slide, không thay thế báo cáo |
 | `ensemble_model.py`, `de_5_ensemble_learning.py` | Thuật toán và thí nghiệm chính |
 | `examples/toy_bagging.py` | Ví dụ tính tay được kiểm chứng bằng code |
 | `experiments/report_extensions.py` | Khảo sát số cây và truy vết mẫu sai |
 | `experiments/controlled_comparison.py` | Đối chứng đặc trưng, hard/soft và mức bất đồng |
+| `experiments/ensemble_families.py` | AdaBoost, Voting và Stacking; cùng 10 lần chia với các mô hình gốc |
 | `outputs/` | Bảng số liệu, biểu đồ và dấu vết dự đoán thực |
 | `presentation/loi_thuyet_trinh.md` | Lời dẫn để luyện tập, không cần đọc nguyên văn |
 | `submission/52400013_52400102.zip` | Gói nộp gồm báo cáo, code, slide và kết quả |
@@ -30,19 +31,21 @@ Không tự điền tên trường, mã lớp hoặc đóng góp cá nhân chưa
 
 ## 2. Bài nói tập trung vào điều gì?
 
-Thông điệp chính: **Bagging tạo nhiều cây từ những mẫu có hoàn lại, sau đó đếm phiếu để dự đoán.**
+Thông điệp chính: **Có nhiều cách kết hợp mô hình; bài minh họa sâu Bagging và đối chiếu thêm AdaBoost, Voting, Stacking.**
 Mục tiêu là giải thích được từng bước, không ghi nhớ nhiều công thức.
 
 Mạch trình bày:
 
 1. Một cây dễ thay đổi khi dữ liệu thay đổi; nhiều cây cần có sự đa dạng.
-2. Cho xem dữ liệu nhỏ, ba bootstrap và ba ngưỡng được học.
-3. Cho cùng x = 2,8 đi qua ba cây: ác, lành, ác → kết quả ác theo 2:1.
-4. Chỉ vào đoạn code lấy mẫu và đếm phiếu để nối lý thuyết với triển khai.
-5. Giới thiệu dữ liệu thật, giữ test riêng và đọc bảng kết quả.
-6. Giải thích một lỗi cụ thể, rồi kết luận trong phạm vi đã kiểm tra.
+2. Phân biệt học tuần tự của AdaBoost, kết hợp cố định của Voting và bộ kết hợp học từ OOF của Stacking.
+3. Cho xem dữ liệu nhỏ, ba bootstrap và ba ngưỡng được học.
+4. Cho cùng x = 2,8 đi qua ba cây: ác, lành, ác → kết quả ác theo 2:1.
+5. Chỉ vào đoạn code lấy mẫu và đếm phiếu để nối lý thuyết với triển khai.
+6. Giới thiệu dữ liệu thật, giữ test riêng và đọc kết quả gốc cùng phần mở rộng.
+7. Giải thích một lỗi cụ thể, rồi kết luận trong phạm vi đã kiểm tra.
 
-Boosting và Stacking chỉ cần giải thích ý tưởng và điểm khác với Bagging.
+AdaBoost, Voting và Stacking đã có code sklearn và kết quả thực nghiệm.
+Giải thích ngắn từng cơ chế; Bagging giữ vai trò ví dụ tính tay xuyên suốt.
 Công thức phương sai là phần bổ sung; không cần chứng minh khi trình bày chính.
 
 ## 3. Gợi ý chia phần cho hai thành viên
@@ -52,14 +55,14 @@ Hai bạn có thể đổi phần theo sở trường, nhưng cả hai cần hi�
 
 | Người trình bày | Phần chính | Câu chuyển |
 |---|---|---|
-| Nguyễn Nghĩa Hiếu | Slide 1–11: ý tưởng, cơ chế, ví dụ, dữ liệu và hai đoạn code cốt lõi | “Từ cơ chế đã kiểm chứng, phần tiếp theo xem kết quả trên dữ liệu thực.” |
-| Trần Quốc Bảo | Slide 12–20: kết quả gốc, khảo sát số cây, mẫu sai, đối chứng và kết luận | “Kết quả có ích trong khảo sát; nhóm giữ rõ giới hạn của thiết kế.” |
-| Cả hai | Slide 21–24: truy vết cây, chỉ số, lý thuyết mở rộng và nguồn | Người nắm phần được hỏi trả lời trước, người còn lại bổ sung nếu cần. |
+| Nguyễn Nghĩa Hiếu | Slide 1–13: các hướng tổ hợp, cơ chế, ví dụ, dữ liệu và code Bagging | “Từ cơ chế đã kiểm chứng, phần tiếp theo xem kết quả trên dữ liệu thực.” |
+| Trần Quốc Bảo | Slide 14–23: kết quả gốc, phần mở rộng, khảo sát, mẫu sai, đối chứng và kết luận | “Kết hợp mô hình chưa bảo đảm tốt hơn; cần đọc kết quả và baseline cùng nhau.” |
+| Cả hai | Slide 24–27: truy vết cây, chỉ số, chi tiết triển khai và nguồn | Người nắm phần được hỏi trả lời trước, người còn lại bổ sung nếu cần. |
 
 Luyện theo thời lượng giảng viên thông báo. Nếu chưa có quy định riêng, có thể
-tập bản 15–18 phút cho 20 slide chính. Khi cần rút thời gian, nói ngắn phần
-tổng quan slide 2 và đối chứng slide 17–18; để slide 21–24 cho hỏi đáp.
-Giữ nguyên ví dụ, code và kết quả. 15–18 phút là gợi ý luyện tập,
+tập bản 18–22 phút cho 23 slide chính. Khi cần rút thời gian, nói ngắn phần
+tổng quan và đối chứng, dùng Notes để chuẩn bị phần giải thích; để slide
+24–27 cho hỏi đáp. Giữ nguyên ví dụ, code và kết quả. 18–22 phút là gợi ý luyện tập,
 không phải thời lượng bắt buộc trong PDF đề bài.
 
 File PPTX dùng Fade nhẹ và chuyển trang bằng click, không tự chạy. Mở Slide
@@ -91,9 +94,9 @@ Có sẵn PDF và PNG để trình bày nếu máy chiếu hoặc terminal gặp
 
 - **Tại sao phải bootstrap?** Cùng số lượt lấy mẫu nhưng thành phần và số lần xuất hiện khác nhau, giúp các cây đa dạng.
 - **Tại sao vẫn dùng sklearn?** Cây cơ sở và Random Forest dùng thư viện; lấy mẫu bootstrap, hard voting và OOB được tự triển khai.
-- **Có phải làm đủ mọi loại Ensemble?** Đề không bắt cài tất cả. Nhóm giới thiệu các hướng phổ biến và triển khai sâu Bagging.
+- **Có phải làm đủ mọi loại Ensemble?** Đề không bắt cài tất cả. Nhóm triển khai sâu Bagging, đồng thời minh họa AdaBoost, Voting và Stacking bằng thư viện.
 - **Vì sao 51 cây?** Đây là cấu hình ban đầu cố định và tránh hòa trong bài toán hai lớp. Khảo sát bổ sung trên train cho điểm CV cao nhất tại 51 trong sáu cấu hình đã xét; chưa chứng minh tối ưu tổng quát.
-- **Vì sao không chuẩn hóa?** Cây chia theo ngưỡng của từng đặc trưng, không dùng khoảng cách giữa các quan sát.
+- **Vì sao cây không chuẩn hóa nhưng LR có?** Cây chia theo ngưỡng từng đặc trưng. Logistic Regression có chuẩn hóa để việc tối ưu và regularization phù hợp hơn; scaler nằm trong pipeline, học lại riêng ở từng fold.
 - **Có rò rỉ test không?** Trong code, chọn depth bằng CV trên train; test chỉ dùng sau khi chốt cấu hình.
 - **OOB khác test thế nào?** OOB dùng các cây không lấy mẫu train đó; test là dữ liệu giữ riêng. OOB sau chọn depth không hoàn toàn độc lập với tuning.
 - **Tại sao Random Forest và Bagging cùng điểm?** Cùng số đếm ở seed 42 không làm hai mô hình thành một; các kết quả tổng hợp 10 seed có khác nhau.
@@ -101,6 +104,9 @@ Có sẵn PDF và PNG để trình bày nếu máy chiếu hoặc terminal gặp
 - **Bagging có luôn tốt hơn không?** Không; kết quả chỉ cho thấy cải thiện trong thí nghiệm đã chạy. Các cây mắc lỗi giống nhau thì lợi ích có thể thấp.
 - **Vì sao quan tâm recall?** Nó phản ánh tỷ lệ ca ác tính được nhận ra. Cần xem thêm precision và số dương tính giả, không chỉ tối đa một chỉ số.
 - **Có dùng để chẩn đoán được không?** Bài minh họa chưa có xác thực lâm sàng và vẫn có lỗi; không phải công cụ chẩn đoán.
+- **AdaBoost cập nhật trọng số thế nào?** Với SAMME nhị phân đang dùng, alpha = ln((1−epsilon)/epsilon). Nếu epsilon = 0,2, alpha = ln4; nhóm sai nhân 4, nhóm đúng nhân 1, rồi chuẩn hóa. Đây là minh họa một vòng, không phải số đo thực nghiệm của bộ dữ liệu.
+- **Stacking khác Voting thế nào?** Voting có quy tắc kết hợp cố định; Stacking học bộ kết hợp từ dự đoán ngoài fold của các mô hình cơ sở, tránh học tầng hai bằng dự đoán in-sample.
+- **Thêm ensemble có luôn tốt hơn không?** Không. Trong phần mở rộng, Logistic Regression riêng lẻ có accuracy trung bình 97,62%, cao hơn các ensemble được thử. Đây là quan sát trên những cấu hình và lần chia đã định, không phải kết luận tổng quát.
 
 ## 6. Dựng lại và đóng gói
 
@@ -111,7 +117,8 @@ Sau khi cài thêm dependencies tạo tài liệu, LibreOffice và Poppler (`pdf
 .venv/bin/python tools/prepare_submission.py
 ```
 
-Lệnh thứ hai kiểm thử, chạy lại 10 seed, ví dụ nhỏ và hai phân tích bổ sung,
+Lệnh thứ hai kiểm thử, chạy lại 10 seed, ví dụ nhỏ, các phân tích bổ sung
+và phần mở rộng AdaBoost/Voting/Stacking,
 tạo lại slide/PDF slide rồi đóng gói theo MSSV. Cặp báo cáo hoàn thiện Word/PDF
 được giữ nguyên để bảo toàn nội dung và mục lục đã kiểm tra; bản nháp cũ không
 được đưa vào gói cùng bản hoàn thiện. Lưu bản sao nếu đã sửa thủ công PowerPoint.

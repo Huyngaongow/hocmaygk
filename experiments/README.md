@@ -57,3 +57,41 @@ JSON còn chứa so sánh từng cặp trên 10 holdout gốc và đối chiếu
 khác nhau trong bootstrap với kỳ vọng lý thuyết. Bảng fold lưu cả chất lượng
 cây cơ sở và mức bất đồng giữa các cặp cây. Đây là phân tích mô tả bổ sung;
 SD không phải CI và chưa có kiểm định ý nghĩa thống kê.
+
+## AdaBoost, Voting và Stacking
+
+```bash
+.venv/bin/python experiments/ensemble_families.py
+```
+
+Chạy sau thí nghiệm gốc để đối chiếu ba mô hình tham chiếu. Mặc định dùng
+10 seed 42–51, cùng các lần chia train/test phân tầng 75/25 của bài gốc.
+Các cấu hình bổ sung được cố định trước khi chạy phần mở rộng:
+
+- AdaBoost: tối đa 51 cây độ sâu 1, learning rate 1; sklearn 1.8 dùng SAMME.
+- Ba mô hình cơ sở: cây độ sâu 3 cố định, Logistic Regression có
+  `StandardScaler` trong `Pipeline`, Gaussian Naive Bayes.
+- Voting: cùng bộ ba trên, trọng số bằng nhau, chạy cả hard và soft.
+- Stacking: cùng bộ ba; tạo dự đoán xác suất ngoài fold bằng CV phân tầng
+  5 fold có xáo trộn, rồi học Logistic Regression tầng hai. Các pipeline
+  được học riêng trong từng fold; khi dự đoán test, mô hình cơ sở học lại
+  trên toàn train. Không dùng `cv='prefit'`.
+
+Ba mô hình gốc và ba mô hình cơ sở riêng lẻ cũng có mặt trong bảng kết quả.
+Cây độ sâu 3 cố định của phần mở rộng khác cây được chọn độ sâu bằng CV
+trong thí nghiệm gốc. Đây là so sánh các cấu hình cụ thể, không tách riêng
+ảnh hưởng nhân quả của tên phương pháp.
+
+Đầu ra trong `outputs/extensions/`:
+
+- `family_comparison.json`: giao thức, cấu hình, phiên bản, chỉ số từng lần
+  chạy, dự đoán và chỉ số các hàng train/test/fold để kiểm tra.
+- `family_comparison_runs.csv`, `family_comparison_summary.csv`: bảng từng
+  seed và trung bình ± SD mẫu.
+- `family_comparison.png/.pdf`: biểu đồ kết quả.
+- `family_comparison.md`: tóm tắt thực nghiệm tự sinh.
+
+Đây là phần mở rộng sau khi đã quan sát thí nghiệm gốc. Không chọn cấu hình
+theo điểm test và không coi các holdout này là một lần xác nhận độc lập mới.
+SD giữa các holdout giao nhau là thống kê mô tả. Ensemble không được bảo đảm
+tốt hơn từng mô hình cơ sở; phải đọc cả các hàng baseline trong bảng kết quả.

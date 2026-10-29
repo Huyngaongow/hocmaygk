@@ -87,7 +87,11 @@ def package(name):
     required = ([FINAL_REPORT, FINAL_REPORT_PDF] if use_final_report else [
         ROOT / f"report/{LEGACY_REPORT_STEM}.docx",
         ROOT / f"report/{LEGACY_REPORT_STEM}.pdf",
-    ]) + [ROOT / "outputs/results.json", ROOT / "outputs/toy/toy_example.json"]
+    ]) + [ROOT / "outputs/results.json", ROOT / "outputs/toy/toy_example.json",
+          ROOT / "experiments/ensemble_families.py",
+          ROOT / "outputs/extensions/family_comparison.json",
+          ROOT / "outputs/extensions/family_comparison_runs.csv",
+          ROOT / "outputs/extensions/family_comparison_summary.csv"]
     if any(not path.is_file() for path in files + required):
         raise RuntimeError("Bộ nộp còn thiếu tệp bắt buộc.")
     files = sorted(set(files))
@@ -122,6 +126,7 @@ def main():
     run(sys.executable, "examples/toy_bagging.py", "--output-dir", "outputs/toy")
     run(sys.executable, "experiments/report_extensions.py")
     run(sys.executable, "experiments/controlled_comparison.py")
+    run(sys.executable, "experiments/ensemble_families.py")
     run(sys.executable, "presentation/create_presentation.py")
     if final_report_ready():
         print("Giữ nguyên báo cáo Word/PDF đã hoàn thiện theo form của nhóm.", flush=True)

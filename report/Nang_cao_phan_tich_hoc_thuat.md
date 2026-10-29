@@ -153,11 +153,16 @@ chỉ sử dụng train của seed 42; SD các fold không là khoảng tin cậ
 đánh giá trên dữ liệu ngoài. Không diễn giải mức bất đồng thành xác suất
 bệnh hoặc bằng chứng xác định nguyên nhân y khoa.
 
-## Cập nhật báo cáo
+## Ghi chú cập nhật ở giai đoạn đối chứng ban đầu
+
+Các ghi chú sau mô tả giai đoạn bổ sung đối chứng 2 × 2. Bản báo cáo hoàn thiện
+hiện đã tích hợp nội dung này và phần mở rộng AdaBoost/Voting/Stacking; bộ mã
+hiện có 32 kiểm thử. Nội dung mở rộng mới nằm trong
+`Mo_rong_Boosting_Voting_Stacking.md`.
 
 - Giữ nguyên các kết quả test và số cây của thí nghiệm gốc.
 - Bổ sung thuật toán/mã đối chứng từ `experiments/controlled_comparison.py`.
-- Cập nhật kiểm thử thành 26/26, gồm hai kiểm thử mới về hard/soft voting,
+- Đối chứng ban đầu nâng bộ kiểm thử lên 26/26, gồm hai kiểm thử về hard/soft voting,
   ánh xạ cột xác suất khi cây chỉ học một lớp và phép đo mức bất đồng.
 - Các lỗi bìa, thụt lề code trong Word, caption và mục lục của bản đã gửi vẫn
   cần sửa; bổ sung học thuật không thay thế việc hoàn thiện hình thức.

@@ -9,12 +9,15 @@
 Mã minh họa tiểu luận **phần dư 5 (mod 8)**: tự triển khai bootstrap,
 hard voting và out-of-bag (OOB) cho Bagging cây quyết định. So sánh với
 cây đơn và Random Forest; đánh giá trên 10 lần chia dữ liệu có phân tầng.
-Cây cơ sở và Random Forest do scikit-learn cung cấp.
+Cây cơ sở và Random Forest do scikit-learn cung cấp. Phần mở rộng bổ sung
+AdaBoost, Voting và Stacking bằng scikit-learn trên cùng 10 lần chia dữ liệu;
+Bagging vẫn là trọng tâm tự triển khai và tính tay.
 
-Đọc [báo cáo hoàn thiện theo form của nhóm (PDF, 51 trang)](report/Bao_cao_Ensemble_Learning_da_hoan_thien.pdf)
+Đọc [báo cáo hoàn thiện theo form của nhóm (PDF)](report/Bao_cao_Ensemble_Learning_da_hoan_thien.pdf)
 hoặc [bản Word có thể chỉnh sửa](report/Bao_cao_Ensemble_Learning_da_hoan_thien.docx).
 Báo cáo gồm sáu chương, có thuật toán, code, khảo sát số cây, phân tích lỗi
-và đối chứng hard/soft voting. Hướng dẫn demo, phân chia phần nói và đóng gói:
+và đối chứng hard/soft voting, cùng phần minh họa ba hướng tổ hợp bổ sung.
+Hướng dẫn demo, phân chia phần nói và đóng gói:
 [`HUONG_DAN_NOP_BAI.md`](HUONG_DAN_NOP_BAI.md).
 
 ## Chạy trên Windows (PowerShell)
@@ -104,8 +107,10 @@ bất đồng, chương trình báo rõ và không tạo ví dụ dự đoán gi
 - **Voting:** kết hợp nhãn (hard) hoặc xác suất (soft) của nhiều mô hình.
 - **Stacking:** học mô hình tầng hai bằng dự đoán ngoài fold của tầng cơ sở.
 
-Phần triển khai tập trung vào Bagging, không nhận Boosting/Stacking là các
-mô hình đã được đo thực nghiệm trong kho này.
+Phần triển khai sâu tập trung vào Bagging. AdaBoost, Voting và Stacking
+được đo trong thí nghiệm mở rộng, dùng thư viện để giữ khối lượng phù hợp.
+Các mô hình cơ sở của Voting/Stacking gồm cây độ sâu 3 cố định,
+Logistic Regression có chuẩn hóa và Gaussian Naive Bayes.
 
 Với N mẫu train, từng cây lấy N chỉ số ngẫu nhiên **có hoàn lại**. Dự đoán:
 
@@ -218,6 +223,36 @@ hàng dataset 291 (đếm từ 0): **27 phiếu ác / 24 phiếu lành**, nhãn 
 lành, nên dự đoán **sai**. Mẫu này được chọn theo thứ tự, không lựa dự đoán
 đúng để trình bày. Mẫu test đầu tiên vẫn có 51 phiếu lành và dự đoán đúng.
 
+### Phần mở rộng: AdaBoost, Voting và Stacking
+
+Chạy `python experiments/ensemble_families.py` sau thí nghiệm gốc.
+Giữ cùng 10 lần chia seed 42–51; ba mô hình gốc được chạy lại để đối chiếu,
+không ghi đè `outputs/results.json`. Cấu hình mới cố định: AdaBoost tối đa
+51 cây độ sâu 1; Voting/Stacking dùng cây độ sâu 3, Logistic Regression có
+chuẩn hóa trong pipeline và GaussianNB. Stacking học Logistic Regression
+tầng hai từ dự đoán xác suất ngoài fold trên 5 fold trong train.
+
+| Mô hình | Accuracy (%) · mean ± SD | Recall ác (%) · mean ± SD | Balanced accuracy (%) · mean ± SD |
+|---|---:|---:|---:|
+| Cây đơn, độ sâu chọn bằng CV | 92,80 ± 1,84 | 90,38 ± 4,66 | 92,30 ± 1,94 |
+| Bagging tự viết | 94,76 ± 1,59 | 92,45 ± 3,77 | 94,28 ± 1,75 |
+| Random Forest | 95,03 ± 1,85 | 92,26 ± 3,26 | 94,47 ± 1,80 |
+| Cây đơn, độ sâu 3 cố định | 92,94 ± 2,15 | 90,19 ± 4,86 | 92,37 ± 2,41 |
+| Logistic Regression | 97,62 ± 0,82 | 96,60 ± 2,32 | 97,41 ± 0,99 |
+| GaussianNB | 94,20 ± 1,40 | 90,19 ± 4,15 | 93,37 ± 1,81 |
+| AdaBoost | 96,43 ± 1,07 | 94,15 ± 2,08 | 95,96 ± 1,13 |
+| Voting hard | 95,80 ± 1,23 | 92,64 ± 3,72 | 95,15 ± 1,58 |
+| Voting soft | 95,66 ± 1,27 | 92,64 ± 3,72 | 95,04 ± 1,63 |
+| Stacking | 96,64 ± 1,22 | 95,09 ± 2,70 | 96,32 ± 1,28 |
+
+Mean tính theo %, SD mẫu theo điểm phần trăm. **Logistic Regression riêng lẻ
+có kết quả trung bình cao hơn mọi ensemble được thử trong phần mở rộng**;
+không kết luận tổ hợp luôn tốt hơn hoặc soft voting luôn tốt hơn hard voting.
+Các cấu hình khác nhau nên đây không phải phép đo tách riêng ảnh hưởng của
+từng họ thuật toán. Phần mở rộng được thực hiện sau khi đã quan sát bài gốc,
+không chọn cấu hình theo test, và không phải xác nhận độc lập trên dữ liệu mới.
+Chi tiết giao thức và tệp kết quả: [`experiments/README.md`](experiments/README.md).
+
 ## 5. Đọc và kiểm thử code
 
 - `ensemble_model.py`: `ManualBagging`, validation đầu vào, bootstrap,
@@ -231,12 +266,15 @@ lành, nên dự đoán **sai**. Mẫu này được chọn theo thứ tự, kh�
 - `experiments/report_extensions.py`: khảo sát số cây chỉ trên train và truy vết mẫu sai.
 - `experiments/controlled_comparison.py`: đối chứng 2 × 2, mức bất đồng,
   so sánh theo cặp và kiểm chứng thống kê bootstrap.
+- `experiments/ensemble_families.py`: so sánh mô tả AdaBoost, hard/soft
+  Voting và Stacking với các mô hình gốc và từng mô hình cơ sở.
 
 Để tái lập các phần bổ sung sau thí nghiệm mặc định:
 
 ```bash
 .venv/bin/python experiments/report_extensions.py
 .venv/bin/python experiments/controlled_comparison.py
+.venv/bin/python experiments/ensemble_families.py
 ```
 
 Xem [`experiments/README.md`](experiments/README.md) để đọc giao thức và các tệp
@@ -254,24 +292,26 @@ Chạy kiểm thử bằng cùng Python đã cài dependencies:
 py -m unittest discover -s tests -v
 ```
 
-Không cần cài thêm pytest. **26/26 kiểm thử đạt**, gồm workflow thực, ví dụ
-tính tay, hard/soft voting, ánh xạ xác suất và phép đo bất đồng.
+Không cần cài thêm pytest. Bộ kiểm thử bao gồm workflow thực, ví dụ
+tính tay, hard/soft voting, ánh xạ xác suất, phép đo bất đồng và quy trình
+Stacking/chuẩn hóa của phần mở rộng. **32/32 kiểm thử đạt** trong lần kiểm tra
+bản mở rộng (26 kiểm thử cũ và 6 kiểm thử mới).
 
 ## Slide và tài liệu nộp
 
 | Tài liệu | Vị trí |
 |---|---|
 | Báo cáo hoàn thiện Word và PDF | `report/Bao_cao_Ensemble_Learning_da_hoan_thien.docx` / `.pdf` |
-| Nội dung phân tích bổ sung | `report/Bo_sung_phan_tich_va_thuc_nghiem.md`, `report/Nang_cao_phan_tich_hoc_thuat.md` |
+| Nội dung phân tích bổ sung | `report/Bo_sung_phan_tich_va_thuc_nghiem.md`, `report/Nang_cao_phan_tich_hoc_thuat.md`, `report/Mo_rong_Boosting_Voting_Stacking.md` |
 | Slide PowerPoint và PDF | `De_5_Ensemble_Learning.pptx` / `.pdf` |
 | Lời thuyết trình | `presentation/loi_thuyet_trinh.md` |
 | Demo, hỏi đáp và quy trình nộp | `HUONG_DAN_NOP_BAI.md` |
 | Thông tin nhóm dùng chung | `report/group_info.json` |
 
-Bộ **24 slide** (20 chính, 4 dự phòng) có đồ họa/chữ chỉnh sửa được, lời
+Bộ **27 slide** (23 chính, 4 dự phòng) có đồ họa/chữ chỉnh sửa được, lời
 thuyết trình trong Notes và chuyển cảnh Fade nhẹ khi trình chiếu. Bản rút gọn
-giữ khảo sát số cây, phân tích mẫu sai và đối chứng hard/soft, thống nhất với
-báo cáo hoàn thiện.
+giữ khảo sát số cây, phân tích mẫu sai và đối chứng hard/soft; bổ sung cơ chế
+AdaBoost, Voting/Stacking và bảng so sánh thực nghiệm, thống nhất với báo cáo.
 `outputs/report.md` chỉ là phần thực nghiệm tự sinh; báo cáo hoàn chỉnh ở
 `report/`. PDF gốc của repo là bản slide, khác với PDF báo cáo.
 
