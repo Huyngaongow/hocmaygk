@@ -35,7 +35,8 @@ Các nhánh của mẫu lỗi được lấy từ mô hình gốc 51 cây. Các 
 độ đẹp của hình hoặc nhãn mẫu test. Phân tích mô tả quyết định của mô hình,
 không xác định nguyên nhân y khoa hoặc hiệu chỉnh xác suất bệnh.
 
-Các chương trình chỉ tạo kết quả thực nghiệm; báo cáo và slide được nộp riêng.
+Không tạo hay chỉnh sửa file Word. Xem [báo cáo PDF](../../52400013_52400102.pdf)
+ở thư mục gốc repo.
 
 ## Đối chứng có kiểm soát và đo mức bất đồng
 

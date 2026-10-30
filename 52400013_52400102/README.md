@@ -13,9 +13,10 @@ Cây cơ sở và Random Forest do scikit-learn cung cấp. Phần mở rộng b
 AdaBoost, Voting và Stacking bằng scikit-learn trên cùng 10 lần chia dữ liệu;
 Bagging vẫn là trọng tâm tự triển khai và tính tay.
 
-Repository chỉ chứa mã nguồn và hướng dẫn chạy. Hai khối lệnh cài đặt
-bắt đầu từ thư mục gốc repo và chuyển vào `52400013_52400102/`;
-các lệnh ở phần sau chạy tại thư mục mã nguồn này.
+Báo cáo và slide nằm ở thư mục cha: [PDF](../52400013_52400102.pdf),
+[PPTX](../52400013_52400102.pptx). Hai khối lệnh cài đặt dưới đây bắt đầu từ
+thư mục gốc repo và chuyển vào `52400013_52400102/`; các lệnh ở phần sau chạy tại `52400013_52400102/`.
+Bản rút gọn không đóng kèm bộ kiểm thử hoặc công cụ tạo tài liệu.
 
 ## Chạy trên Windows (PowerShell)
 
@@ -299,7 +300,7 @@ phiếu; `predict(X)` chọn lớp thắng. Nếu hòa, chọn lớp đầu theo
 
 Gói này gồm mã thực nghiệm và ví dụ tính tay. Các kết quả trong `outputs/`
 được sinh khi chạy, không cần dataset riêng. Không kèm bộ kiểm thử, công cụ
-tạo báo cáo hoặc tạo slide. Word, PDF và PPTX được nộp riêng.
+tạo báo cáo hoặc tạo slide. Báo cáo PDF và PPTX nằm ở thư mục cha.
 
 ## Tài liệu tham khảo
 
