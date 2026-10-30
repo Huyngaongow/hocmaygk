@@ -5,12 +5,14 @@ Giảng viên: TS. Trần Lương Quốc Đại.
 
 ## Tài liệu
 
+- [Báo cáo Word](52400013_52400102.docx)
 - [Báo cáo PDF](52400013_52400102.pdf)
 - [PowerPoint: 18 slide chính và 6 dự phòng](52400013_52400102.pptx)
 - [Mã nguồn và hướng dẫn chạy](52400013_52400102/README.md)
 
-Bộ tài liệu được cập nhật từ ZIP của nhóm. **Chưa có file Word (.docx)**;
-đề yêu cầu nộp cả Word và PDF, cần bổ sung bản Word nguồn tương ứng PDF này.
+Bản Word mới nhất được bổ sung từ file nhóm cung cấp sau gói ZIP.
+PDF hiện là bản trong ZIP trước đó; cần xuất lại PDF từ Word sau khi
+hoàn tất các chỉnh sửa cuối để đồng bộ hai định dạng.
 
 ## Chạy thực nghiệm
 
