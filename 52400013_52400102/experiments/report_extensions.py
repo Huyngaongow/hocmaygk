@@ -1,9 +1,3 @@
-"""Khảo sát số cây chỉ trên train và phân tích lỗi của mô hình gốc.
-
-Run: .venv/bin/python experiments/report_extensions.py
-Không đổi cấu hình hay số liệu test của thí nghiệm gốc.
-"""
-
 import csv
 import json
 from pathlib import Path
@@ -26,14 +20,12 @@ from ensemble_model import ManualBagging
 
 def survey_tree_counts(X_train, y_train, counts=(1, 5, 11, 21, 51, 101), seed=42,
                        n_splits=5, depth_selector=select_depth):
-    """Chỉ nhận train; chọn lại depth bên trong phần học của từng fold ngoài."""
     folds = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     records, splits = [], []
     for fold, (fit, validation) in enumerate(folds.split(X_train, y_train), 1):
         depth, _ = depth_selector(X_train[fit], y_train[fit], seed + fold)
         splits.append({"fold": fold, "fit_indices": fit.tolist(),
                        "validation_indices": validation.tolist(), "selected_depth": int(depth)})
-        # Cùng fold và seed cho các B: cùng chuỗi bootstrap, khác số cây.
         for count in counts:
             model = ManualBagging(n_estimators=count, max_depth=depth,
                                   random_state=seed + fold, oob_score=False)
@@ -58,7 +50,6 @@ def survey_tree_counts(X_train, y_train, counts=(1, 5, 11, 21, 51, 101), seed=42
 
 
 def explain_tree_path(tree, sample, feature_names):
-    """Trả đúng nhánh và lá đã dùng; sklearn cây dùng đầu vào float32."""
     x = np.asarray(sample, dtype=np.float32).reshape(1, -1)
     path = tree.decision_path(x).indices
     leaf = int(tree.apply(x)[0])
@@ -84,7 +75,7 @@ def analyze_reference_error(data, run):
     model = run.models["Manual Bagging"]
     votes = model.votes(run.X_test)
     positions = np.flatnonzero((votes > 0).sum(axis=1) > 1)
-    position = int(positions[0])  # Giữ cùng quy tắc chọn mẫu của báo cáo gốc.
+    position = int(positions[0])
     sample = run.X_test[position]
     trace_by_prediction = {}
     for number, tree in enumerate(model.estimators_, 1):
@@ -92,7 +83,6 @@ def analyze_reference_error(data, run):
         if str(predicted) not in trace_by_prediction:
             trace_by_prediction[str(predicted)] = {
                 "tree_number": number, **explain_tree_path(tree, sample, data.feature_names)}
-    # Các đặc trưng được root của mô hình train dùng nhiều nhất; không chọn theo nhãn mẫu lỗi.
     root_features = np.array([int(tree.tree_.feature[0]) for tree in model.estimators_])
     frequencies = np.bincount(root_features[root_features >= 0], minlength=len(data.feature_names))
     top = sorted(range(len(frequencies)), key=lambda f: (-frequencies[f], f))[:3]
@@ -140,7 +130,6 @@ def main():
     train_indices, test_indices = train_test_split(
         np.arange(len(data.target)), test_size=.25, stratify=data.target, random_state=42)
     survey = survey_tree_counts(data.data[train_indices], data.target[train_indices])
-    # Phân tích test được thực hiện sau khảo sát; không gửi test cho hàm khảo sát.
     reference = run_experiment(data, 42)
     error = analyze_reference_error(data, reference)
     result = {"protocol": {"seed": 42, "train_size": len(train_indices), "test_size": len(test_indices),

@@ -1,9 +1,3 @@
-"""Illustrate four ensemble families with fixed, reproducible configurations.
-
-Run from the repository root: python experiments/ensemble_families.py
-This is a post-hoc descriptive extension; it does not replace the Bagging study.
-"""
-
 import argparse
 import hashlib
 import json
@@ -44,7 +38,6 @@ ENSEMBLE_NAMES = (
 
 
 def build_base_estimators(seed):
-    """Fresh, unfitted fixed configurations; scaling stays inside each fit/fold."""
     return [
         ("tree", DecisionTreeClassifier(max_depth=3, random_state=seed)),
         ("lr", make_pipeline(StandardScaler(), LogisticRegression(
@@ -54,7 +47,6 @@ def build_base_estimators(seed):
 
 
 def build_models(seed):
-    """No search over these configurations or use of outer test labels."""
     base = build_base_estimators(seed)
     return {
         "Decision Tree (depth=3)": clone(base[0][1]),
@@ -86,7 +78,6 @@ def validate_seeds(seeds):
 
 
 def run_family_experiment(data, seed):
-    """All ten methods see the same split; only original tree depth uses train CV."""
     validate_seeds([seed])
     train, test = train_test_split(
         np.arange(len(data.target)), test_size=.25,
@@ -106,8 +97,6 @@ def run_family_experiment(data, seed):
         metrics.append(evaluate(name, model, X_test, y_test))
         predictions[name] = model.predict(X_test).astype(int).tolist()
 
-    # With deterministic base configurations, both Voting rules must use the
-    # same fitted base predictions/probabilities, not different random learners.
     for hard, soft in zip(models["Voting (hard)"].estimators_,
                           models["Voting (soft)"].estimators_):
         np.testing.assert_allclose(hard.predict_proba(X_test), soft.predict_proba(X_test),
@@ -252,7 +241,7 @@ def export_result(result, output):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='So sánh Bagging, Random Forest, AdaBoost, Voting và Stacking.')
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--repeats", type=int, default=10)
     parser.add_argument("--output-dir", type=Path, default=ROOT / "outputs/extensions")
