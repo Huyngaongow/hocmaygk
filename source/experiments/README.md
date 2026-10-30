@@ -1,6 +1,6 @@
 # Phân tích bổ sung cho báo cáo
 
-Từ gốc repo, dùng Python đã cài `requirements.txt`:
+Từ thư mục `source/`, dùng Python đã cài `requirements.txt`:
 
 ```bash
 export MPLCONFIGDIR=/tmp/hocmaygk-matplotlib
@@ -32,8 +32,7 @@ Các nhánh của mẫu lỗi được lấy từ mô hình gốc 51 cây. Các 
 độ đẹp của hình hoặc nhãn mẫu test. Phân tích mô tả quyết định của mô hình,
 không xác định nguyên nhân y khoa hoặc hiệu chỉnh xác suất bệnh.
 
-Không tạo hay chỉnh sửa file Word. Phần văn bản để chèn vào báo cáo lưu tại
-`report/Bo_sung_phan_tich_va_thuc_nghiem.md`.
+Không tạo hay chỉnh sửa file Word. Báo cáo hoàn chỉnh nằm ở PDF trong thư mục cha.
 
 ## Đối chứng có kiểm soát và đo mức bất đồng
 
