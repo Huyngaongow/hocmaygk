@@ -14,33 +14,41 @@ AdaBoost, Voting và Stacking bằng scikit-learn trên cùng 10 lần chia dữ
 Bagging vẫn là trọng tâm tự triển khai và tính tay.
 
 Báo cáo và slide nằm ở thư mục cha: [PDF](../52400013_52400102.pdf),
-[PPTX](../52400013_52400102.pptx). Chạy mọi lệnh bên dưới từ thư mục `source/`.
+[PPTX](../52400013_52400102.pptx). Hai khối lệnh cài đặt dưới đây bắt đầu từ
+thư mục gốc repo và chuyển vào `source/`; các lệnh ở phần sau chạy tại `source/`.
 Bản rút gọn không đóng kèm bộ kiểm thử hoặc công cụ tạo tài liệu.
 
 ## Chạy trên Windows (PowerShell)
 
 Cần Python **3.11 trở lên**; phiên bản đã kiểm tra trong môi trường này là
-3.12. Từ thư mục kho mã:
+3.12. Mở PowerShell tại thư mục gốc repo, rồi chạy:
 
 ```powershell
+cd source
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe de_5_ensemble_learning.py
+.\.venv\Scripts\python.exe examples/toy_bagging.py
+.\.venv\Scripts\python.exe experiments/report_extensions.py
+.\.venv\Scripts\python.exe experiments/controlled_comparison.py
+.\.venv\Scripts\python.exe experiments/ensemble_families.py
 ```
 
 Dùng trực tiếp Python trong venv nên không cần bật quyền chạy Activate.ps1.
-Nếu đã cài đúng dependencies vào Python đang dùng, có thể chạy như trước:
-
-```powershell
-py de_5_ensemble_learning.py
-```
+Nếu terminal đã ở `source/`, bỏ qua dòng `cd source`. Các lệnh trên chạy đủ
+thực nghiệm gốc, ví dụ tính tay và ba phần phân tích bổ sung.
 
 ## Chạy trên Linux / macOS
 
 ```bash
+cd source
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python de_5_ensemble_learning.py
+.venv/bin/python examples/toy_bagging.py
+.venv/bin/python experiments/report_extensions.py
+.venv/bin/python experiments/controlled_comparison.py
+.venv/bin/python experiments/ensemble_families.py
 ```
 
 Trong cloud có thư mục home chỉ đọc, đặt cache trước khi chạy:
@@ -58,13 +66,13 @@ Lệnh mặc định chạy **10 seed liên tiếp, 42–51**. Seed đầu là l
 giữ kết quả tương thích với demo ban đầu. Có thể chạy nhanh một lần:
 
 ```powershell
-py de_5_ensemble_learning.py --repeats 1 --output-dir outputs/quick
+.\.venv\Scripts\python.exe de_5_ensemble_learning.py --repeats 1 --output-dir outputs/quick
 ```
 
 Ví dụ cấu hình đầy đủ:
 
 ```powershell
-py de_5_ensemble_learning.py --seed 42 --repeats 10 --n-estimators 51 --output-dir outputs
+.\.venv\Scripts\python.exe de_5_ensemble_learning.py --seed 42 --repeats 10 --n-estimators 51 --output-dir outputs
 ```
 
 | Tham số | Mặc định | Ý nghĩa |
@@ -76,6 +84,10 @@ py de_5_ensemble_learning.py --seed 42 --repeats 10 --n-estimators 51 --output-d
 
 Chạy lại vào cùng thư mục sẽ thay thế các kết quả cùng tên. Dùng thư mục
 khác khi so sánh cấu hình; không chọn cấu hình hoặc seed theo điểm test.
+Trên Linux/macOS, thay `.\.venv\Scripts\python.exe` bằng `.venv/bin/python`.
+Ba script bổ sung được dùng để tái lập báo cáo theo cấu hình mặc định; cần
+chạy thí nghiệm gốc đủ 10 seed vào `outputs/` trước, không dùng kết quả
+demo nhanh trong `outputs/quick` làm đầu vào thay thế.
 
 ## Các tệp kết quả
 
@@ -250,14 +262,14 @@ từng họ thuật toán. Phần mở rộng được thực hiện sau khi đ�
 không chọn cấu hình theo test, và không phải xác nhận độc lập trên dữ liệu mới.
 Chi tiết giao thức và tệp kết quả: [`experiments/README.md`](experiments/README.md).
 
-## 5. Đọc và kiểm thử code
+## 5. Cấu trúc mã nguồn
 
 - `ensemble_model.py`: `ManualBagging`, validation đầu vào, bootstrap,
   hard voting và OOB. Hỗ trợ nhãn chuỗi, nhãn số không liên tiếp và đa lớp.
 - `de_5_ensemble_learning.py`: dữ liệu, train-only CV, so sánh mô hình,
   lặp seed, biểu đồ và xuất báo cáo cho bài toán nhị phân cụ thể.
 - `examples/toy_bagging.py`: ví dụ nhỏ cùng một luồng từ bootstrap đến voting;
-  có kiểm thử riêng cho ngưỡng, phiếu và các mẫu OOB.
+  tính ngưỡng, phiếu và các mẫu OOB để đối chiếu với phép tính tay.
 - `experiments/report_extensions.py`: khảo sát số cây chỉ trên train và truy vết mẫu sai.
 - `experiments/controlled_comparison.py`: đối chứng 2 × 2, mức bất đồng,
   so sánh theo cặp và kiểm chứng thống kê bootstrap.
@@ -265,6 +277,9 @@ Chi tiết giao thức và tệp kết quả: [`experiments/README.md`](experime
   Voting và Stacking với các mô hình gốc và từng mô hình cơ sở.
 
 Để tái lập các phần bổ sung sau thí nghiệm mặc định:
+
+Các lệnh dưới đây dùng Linux/macOS; trên Windows thay `.venv/bin/python`
+bằng `.\.venv\Scripts\python.exe`. Terminal vẫn ở `source/`.
 
 ```bash
 .venv/bin/python experiments/report_extensions.py

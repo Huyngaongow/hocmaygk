@@ -14,7 +14,9 @@ Bộ tài liệu được cập nhật từ ZIP của nhóm. **Chưa có file Wo
 
 ## Chạy thực nghiệm
 
-Mở terminal tại thư mục `source`, dùng Python 3.11 trở lên (đã kiểm tra Python 3.12):
+Mở terminal tại thư mục gốc repo, rồi chuyển vào `source/` như dòng đầu
+bên dưới. Dùng Python 3.11 trở lên (đã kiểm tra Python 3.12); xem hướng dẫn
+tạo môi trường riêng cho Windows/Linux trong [README mã nguồn](source/README.md).
 
 ```bash
 cd source
