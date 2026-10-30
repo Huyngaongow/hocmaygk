@@ -7,19 +7,19 @@ Giảng viên: TS. Trần Lương Quốc Đại.
 
 - [Báo cáo PDF](52400013_52400102.pdf)
 - [PowerPoint: 18 slide chính và 6 dự phòng](52400013_52400102.pptx)
-- [Mã nguồn và hướng dẫn chạy](source/README.md)
+- [Mã nguồn và hướng dẫn chạy](52400013_52400102/README.md)
 
 Bộ tài liệu được cập nhật từ ZIP của nhóm. **Chưa có file Word (.docx)**;
 đề yêu cầu nộp cả Word và PDF, cần bổ sung bản Word nguồn tương ứng PDF này.
 
 ## Chạy thực nghiệm
 
-Mở terminal tại thư mục gốc repo, rồi chuyển vào `source/` như dòng đầu
+Mở terminal tại thư mục gốc repo, rồi chuyển vào `52400013_52400102/` như dòng đầu
 bên dưới. Dùng Python 3.11 trở lên (đã kiểm tra Python 3.12); xem hướng dẫn
-tạo môi trường riêng cho Windows/Linux trong [README mã nguồn](source/README.md).
+tạo môi trường riêng cho Windows/Linux trong [README mã nguồn](52400013_52400102/README.md).
 
 ```bash
-cd source
+cd 52400013_52400102
 python -m pip install -r requirements.txt
 python de_5_ensemble_learning.py
 python examples/toy_bagging.py
@@ -28,7 +28,7 @@ python experiments/controlled_comparison.py
 python experiments/ensemble_families.py
 ```
 
-Dữ liệu có sẵn trong scikit-learn. Kết quả được tạo trong `source/outputs/`.
+Dữ liệu có sẵn trong scikit-learn. Kết quả được tạo trong `52400013_52400102/outputs/`.
 Bagging tự triển khai bootstrap, hard voting và OOB; cây cơ sở và các mô hình
 đối chiếu dùng scikit-learn. Mười lần chia seed 42–51; SD mẫu không phải CI.
 

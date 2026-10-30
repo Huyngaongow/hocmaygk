@@ -1,6 +1,6 @@
 # Phân tích bổ sung cho báo cáo
 
-Từ thư mục `source/`, dùng Python đã cài `requirements.txt`:
+Từ thư mục `52400013_52400102/`, dùng Python đã cài `requirements.txt`:
 
 Chạy `de_5_ensemble_learning.py` theo cấu hình mặc định trước khi chạy các
 phần bổ sung để có đủ kết quả gốc 10 seed trong `outputs/results.json`.

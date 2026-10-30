@@ -15,7 +15,7 @@ Bagging vẫn là trọng tâm tự triển khai và tính tay.
 
 Báo cáo và slide nằm ở thư mục cha: [PDF](../52400013_52400102.pdf),
 [PPTX](../52400013_52400102.pptx). Hai khối lệnh cài đặt dưới đây bắt đầu từ
-thư mục gốc repo và chuyển vào `source/`; các lệnh ở phần sau chạy tại `source/`.
+thư mục gốc repo và chuyển vào `52400013_52400102/`; các lệnh ở phần sau chạy tại `52400013_52400102/`.
 Bản rút gọn không đóng kèm bộ kiểm thử hoặc công cụ tạo tài liệu.
 
 ## Chạy trên Windows (PowerShell)
@@ -24,7 +24,7 @@ Cần Python **3.11 trở lên**; phiên bản đã kiểm tra trong môi trư�
 3.12. Mở PowerShell tại thư mục gốc repo, rồi chạy:
 
 ```powershell
-cd source
+cd 52400013_52400102
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe de_5_ensemble_learning.py
@@ -35,13 +35,13 @@ py -m venv .venv
 ```
 
 Dùng trực tiếp Python trong venv nên không cần bật quyền chạy Activate.ps1.
-Nếu terminal đã ở `source/`, bỏ qua dòng `cd source`. Các lệnh trên chạy đủ
+Nếu terminal đã ở `52400013_52400102/`, bỏ qua dòng `cd 52400013_52400102`. Các lệnh trên chạy đủ
 thực nghiệm gốc, ví dụ tính tay và ba phần phân tích bổ sung.
 
 ## Chạy trên Linux / macOS
 
 ```bash
-cd source
+cd 52400013_52400102
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python de_5_ensemble_learning.py
@@ -279,7 +279,7 @@ Chi tiết giao thức và tệp kết quả: [`experiments/README.md`](experime
 Để tái lập các phần bổ sung sau thí nghiệm mặc định:
 
 Các lệnh dưới đây dùng Linux/macOS; trên Windows thay `.venv/bin/python`
-bằng `.\.venv\Scripts\python.exe`. Terminal vẫn ở `source/`.
+bằng `.\.venv\Scripts\python.exe`. Terminal vẫn ở `52400013_52400102/`.
 
 ```bash
 .venv/bin/python experiments/report_extensions.py
