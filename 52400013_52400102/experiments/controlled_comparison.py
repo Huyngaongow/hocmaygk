@@ -1,9 +1,3 @@
-"""Controlled feature/aggregation study on seed42 TRAIN only; no test tuning.
-
-Run: .venv/bin/python experiments/controlled_comparison.py
-Reuse the original bootstraps and per-tree seeds across feature settings.
-"""
-
 import json
 from pathlib import Path
 import sys
@@ -23,7 +17,6 @@ from experiments.report_extensions import write_csv
 
 
 def aggregate_trees(trees, X, n_classes=2):
-    """Trees learn globally encoded labels, possibly seeing only one class."""
     votes = np.zeros((len(X), n_classes), dtype=np.int64)
     probabilities = np.zeros((len(X), n_classes), dtype=float)
     for tree in trees:
@@ -35,7 +28,6 @@ def aggregate_trees(trees, X, n_classes=2):
 
 
 def pair_disagreement(votes):
-    """Fraction of unordered tree pairs giving different hard labels, mean over X."""
     votes = np.asarray(votes)
     count = votes.sum(axis=1)
     if np.any(count < 2) or not np.all(count == count[0]):

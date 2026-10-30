@@ -1,6 +1,9 @@
 # Phân tích bổ sung cho báo cáo
 
-Từ gốc repo, dùng Python đã cài `requirements.txt`:
+Từ thư mục `52400013_52400102/`, dùng Python đã cài `requirements.txt`:
+
+Chạy `de_5_ensemble_learning.py` theo cấu hình mặc định trước khi chạy các
+phần bổ sung để có đủ kết quả gốc 10 seed trong `outputs/results.json`.
 
 ```bash
 export MPLCONFIGDIR=/tmp/hocmaygk-matplotlib
@@ -8,7 +11,7 @@ export XDG_CACHE_HOME=/tmp/hocmaygk-cache
 .venv/bin/python experiments/report_extensions.py
 ```
 
-Windows dùng `.venv\Scripts\python.exe` thay `.venv/bin/python`; không cần hai
+Windows dùng `.\.venv\Scripts\python.exe` thay `.venv/bin/python`; không cần hai
 lệnh export trong môi trường Windows thông thường.
 
 Đầu ra tại `outputs/extensions/`:
@@ -32,13 +35,14 @@ Các nhánh của mẫu lỗi được lấy từ mô hình gốc 51 cây. Các 
 độ đẹp của hình hoặc nhãn mẫu test. Phân tích mô tả quyết định của mô hình,
 không xác định nguyên nhân y khoa hoặc hiệu chỉnh xác suất bệnh.
 
-Không tạo hay chỉnh sửa file Word. Phần văn bản để chèn vào báo cáo lưu tại
-`report/Bo_sung_phan_tich_va_thuc_nghiem.md`.
+Không tạo hay chỉnh sửa file Word. Xem [báo cáo PDF](../../52400013_52400102.pdf)
+ở thư mục gốc repo.
 
 ## Đối chứng có kiểm soát và đo mức bất đồng
 
 Phần này cần kết quả gốc đủ 10 seed trong `outputs/results.json`. Nếu chưa có,
-chạy `python de_5_ensemble_learning.py` bằng cùng Python venv trước.
+chạy `.venv/bin/python de_5_ensemble_learning.py` bằng cùng Python venv trước
+(Windows dùng đường dẫn Python như hướng dẫn phía trên).
 
 ```bash
 .venv/bin/python experiments/controlled_comparison.py

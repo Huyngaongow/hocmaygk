@@ -1,9 +1,3 @@
-"""Đề 5: Bagging tự viết, OOB, so sánh mô hình và đánh giá nhiều seed.
-
-Chạy nhanh: python de_5_ensemble_learning.py --repeats 1
-Đánh giá đầy đủ (10 seed): python de_5_ensemble_learning.py
-"""
-
 import argparse
 import csv
 from dataclasses import dataclass
@@ -49,7 +43,6 @@ class Experiment:
 
 
 def select_depth(X_train, y_train, seed):
-    """Chỉ dùng train; cây đơn chọn depth rồi dùng chung để đối chiếu."""
     folds = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=seed)
     scores = {}
     for depth in DEPTHS:
@@ -58,12 +51,11 @@ def select_depth(X_train, y_train, seed):
             X_train, y_train, cv=folds, scoring="balanced_accuracy", n_jobs=1,
         )
         scores[depth] = float(values.mean())
-    return max(scores, key=scores.get), scores  # Hòa điểm: ưu tiên depth nhỏ.
+    return max(scores, key=scores.get), scores
 
 
 def evaluate(name, model, X, y):
     predicted = model.predict(X)
-    # labels=[0,1], ác tính (0) là dương => TP nằm trên-trái.
     tp, fn, fp, tn = confusion_matrix(y, predicted, labels=[0, 1]).ravel()
     return {
         "model": name,
@@ -101,7 +93,6 @@ def run_experiment(data, seed, n_estimators=51):
 
 
 def summarize(rows):
-    """Mean và SD mẫu giữa các split; không phải khoảng tin cậy độc lập."""
     summaries = []
     for name in dict.fromkeys(row["model"] for row in rows):
         group = [row for row in rows if row["model"] == name]
@@ -115,7 +106,6 @@ def summarize(rows):
 
 
 def write_csv(path, rows):
-    # BOM giúp Excel trên Windows nhận tiếng Việt đúng.
     with path.open("w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
@@ -147,12 +137,11 @@ def make_trace(run, data, position):
         "interpretation": "Vote fraction is not a calibrated disease probability.",
     }
     if len(model.estimators_) == 51:
-        result["all_51_votes"] = counts  # Tương thích bộ slide ban đầu.
+        result["all_51_votes"] = counts
     return result
 
 
 def reference_artifacts(run, data, output):
-    """Đầu ra chỉ thuộc seed tham chiếu, tách khỏi bảng nhiều lần chạy."""
     fig, axes = plt.subplots(1, 3, figsize=(14, 4))
     reports, predictions = {}, {}
     for ax, (name, model) in zip(axes, run.models.items()):
@@ -286,7 +275,7 @@ def positive_int(value):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Thực nghiệm Bagging, cây quyết định và Random Forest.')
     parser.add_argument("--output-dir", type=Path, default=Path("outputs"))
     parser.add_argument("--seed", type=int, default=42, help="seed tham chiếu và bắt đầu dãy seed")
     parser.add_argument("--repeats", type=positive_int, default=10, help="tổng số seed gồm seed tham chiếu (mặc định 10)")

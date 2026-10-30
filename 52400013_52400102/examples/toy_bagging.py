@@ -1,11 +1,3 @@
-"""Theo dõi một ví dụ Bagging từ dữ liệu đến phiếu và OOB.
-
-Chạy từ gốc repo: python examples/toy_bagging.py --output-dir outputs/toy
-Đây là dữ liệu giả lập một chiều; không phải các ca bệnh của thí nghiệm.
-Ba mẫu bootstrap được cố định để tiện tính tay. Các cây, ngưỡng, dự đoán
-và số đếm OOB đều được tính bằng mã, không gán trước kết quả.
-"""
-
 import argparse
 import json
 from pathlib import Path
@@ -15,7 +7,6 @@ from sklearn.tree import DecisionTreeClassifier
 
 
 def build_toy_example():
-    """Trả dữ liệu JSON thuần để báo cáo và slide dùng cùng một nguồn."""
     X = np.arange(1, 6, dtype=float).reshape(-1, 1)
     y = np.array([1, 1, 0, 0, 0])
     samples = ([0, 0, 2, 4, 1], [0, 0, 1, 3, 4], [4, 2, 4, 1, 3])
@@ -102,7 +93,6 @@ def build_toy_example():
 
 
 def render_markdown(example):
-    """Diễn giải đủ các bước, phù hợp đọc trước khi chạy demo."""
     names = example["dataset"]["class_names"]
     lines = [
         "# Ví dụ Bagging xuyên suốt: từ dữ liệu đến quyết định", "",
@@ -160,7 +150,7 @@ def render_markdown(example):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Ví dụ bootstrap, Gini và bỏ phiếu.')
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/toy"))
     args = parser.parse_args(argv)
     example = build_toy_example()
